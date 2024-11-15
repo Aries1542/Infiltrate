@@ -1,0 +1,14 @@
+{
+  "name": "infiltrate",
+  "version": "1.0.0",
+  "description": "Browser stealth game made at Southern Utah Code Camp 2024",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "two.js": "^0.8.14"
+  }
+}
