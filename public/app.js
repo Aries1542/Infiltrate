@@ -58,7 +58,6 @@ function updatePlayers(players, clientPlayer) {
             circle.noStroke();
             triangle.noStroke();
             scene.players[playerID] = two.makeGroup(circle, triangle);
-            continue
         }
         playerObj = players[playerID]
         let x = centerX + (playerObj.x - clientPlayer.x)
@@ -71,14 +70,19 @@ function updatePlayers(players, clientPlayer) {
 function updateEnemies(enemies, clientPlayer) {
     for (let enemyID in enemies) {
         if (!(enemyID in scene.enemies)) {
-            // Add a new Enemy Here
-            continue
+            var circle = two.makeCircle(0, 0, 25);
+            var triangle = two.makePolygon(0, -25, 20, 3);
+            triangle.height = 30;
+            circle.fill = triangle.fill = '#44eeaa';
+            circle.noStroke();
+            triangle.noStroke();
+            scene.enemies[enemyID] = two.makeGroup(circle, triangle);
         }
         enemyObj = enemies[enemyID]
         let x = centerX + (enemyObj.x - clientPlayer.x)
         let y = centerY + (enemyObj.y - clientPlayer.y)
-        scene.players[enemyID].position.set(x, y)
-        scene.players[enemyID].rotation = enemyObj.rotation
+        scene.enemies[enemyID].position.set(x, y)
+        scene.enemies[enemyID].rotation = enemyObj.rotation
     }
 }
 
@@ -161,6 +165,8 @@ function handleKeys () {
     if (keysDown["KeyD"]) {
         deltaX += 2;
     }
+    deltaX *= 2
+    deltaY *= 2
     requestMovement(deltaX, deltaY)
 };
 

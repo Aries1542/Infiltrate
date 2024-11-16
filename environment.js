@@ -19,6 +19,11 @@ class Player {
         this.x = x
         this.y = y
         this.rotation = rotation
+        this.action = {
+            'deltaX': 0,
+            'deltaY': 0,
+            'rotation': rotation
+        }
     }
 
     toJSON() {
@@ -70,8 +75,14 @@ class Enemy {
         this.x = x
         this.y = y
         this.rotation = rotation
-        this.mode = 'patrol'
+        this.mode = 'chase'
+        this.dead = false
         this.patrol_points = []
+        this.action = {
+            'deltaX': 0,
+            'deltaY': 0,
+            'rotation': rotation
+        }
     }
 
     toJSON() {
