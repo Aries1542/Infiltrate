@@ -1,59 +1,141 @@
+////////////////////////////// GLOBAL VARIABLES \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+var clientID = null
+var setup = false
 
-// Make an instance of two and place it on the page.
-var params = {
-fullscreen: true
-};
+var params = { fullscreen: true };
 var elem = document.body;
-var two = new Two(params).appendTo(elem);
+var two = new Two(params).appendTo(elem); // Base class used for all drawing
+two.play()
 
-// Two.js has convenient methods to make shapes and insert them into the scene.
-var radius = 25;
-var x = 0;
-var y = 0;
-var circle = two.makeCircle(x, y, radius);
+var centerX = two.width * 0.5
+var centerY = two.height * 0.5
 
-radius = 20;
-y = -30;
-var triangle = two.makePolygon(x, y, radius, 3)
+var objectGlobalpos
 
-// The object returned has many stylable properties:
-circle.fill = '#1188ee';
-circle.noStroke();
+var scene = { // Stores graphics objects of every rendered object
+    players: {},
+    enemies: {},
+    rectObstacles: []
+}
 
-triangle.fill = '#1188ee';
-triangle.noStroke();
-triangle.height = 30;
+////////////////////////////// SOCKET FUNCTIONS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+var socket = new WebSocket("ws://localhost:8080")
+socket.onmessage = (event) => {
+    message = JSON.parse(event.data)
+    var clientPlayer = null
+    switch(message.type) {
+        case 'setup':
+            clientID = message.playerID
+            env = message.env
+            clientPlayer = env.players[clientID]
 
-var player = two.makeGroup(circle, triangle)
-player.position.set(two.width * 0.5, two.width * 0.5)
+            setupObjects(env.rectObstacles, clientPlayer)
+            updatePlayers(env.players, clientPlayer)
+            updateEnemies(env.enemies, clientPlayer)
+            setup = true
 
-// Don’t forget to tell two to draw everything to the screen
-two.update();
+            break
 
-function move(deltaX, deltaY) {
-    if ((deltaX || deltaY)) {
-        player.position.set(player.position.x + deltaX, player.position.y + deltaY)
+        case 'update':
+            clientPlayer = message.players[clientID]
+            updateObjects(clientPlayer)
+            updatePlayers(message.players, clientPlayer)
+            updateEnemies(message.enemies, clientPlayer)
+            break
     }
-    
-    // console.log("redrawing")
-    console.log("mouseX:", mouseX, "\nmouseY:", mouseY)
-    var angle = Math.atan2(mouseY - player.position.y, mouseX - player.position.x);
-    // angle = angle * (180/Math.PI);
-    player.rotation = angle + (.5 * Math.PI)
-    two.update();
 }
 
-function requestMove() {
 
+////////////////////////////// GRAPHICS OBJECTS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+function updatePlayers(players, clientPlayer) {
+    for (let playerID in players) {
+        if (!(playerID in scene.players)) {
+            var circle = two.makeCircle(0, 0, 25);
+            var triangle = two.makePolygon(0, -25, 20, 3);
+            triangle.height = 30;
+            circle.fill = triangle.fill = '#1188ee';
+            circle.noStroke();
+            triangle.noStroke();
+            scene.players[playerID] = two.makeGroup(circle, triangle);
+            continue
+        }
+        playerObj = players[playerID]
+        let x = centerX + (playerObj.x - clientPlayer.x)
+        let y = centerY + (playerObj.y - clientPlayer.y)
+        scene.players[playerID].position.set(x, y)
+        scene.players[playerID].rotation = playerObj.rotation
+    }
 }
 
+function updateEnemies(enemies, clientPlayer) {
+    for (let enemyID in enemies) {
+        if (!(enemyID in scene.enemies)) {
+            // Add a new Enemy Here
+            continue
+        }
+        enemyObj = enemies[enemyID]
+        let x = centerX + (enemyObj.x - clientPlayer.x)
+        let y = centerY + (enemyObj.y - clientPlayer.y)
+        scene.players[enemyID].position.set(x, y)
+        scene.players[enemyID].rotation = enemyObj.rotation
+    }
+}
+
+function setupObjects(objects, clientPlayer) {
+    for (var object of objects) {
+        let x = centerX + (object.x - clientPlayer.x)
+        let y = centerY + (object.y - clientPlayer.y)
+        let width = object.width
+        let height = object.height
+        var rect = two.makeRectangle(x, y, width, height)   
+        rect.fill = object.color
+
+        var obstacle = {}
+        obstacle.data = object
+        obstacle.graphics = rect
+
+        scene.rectObstacles.push(obstacle)
+    }
+}
+
+function updateObjects(clientPlayer) {
+    console.log("before:", scene.rectObstacles)
+    for (var object of scene.rectObstacles) {
+        let x = centerX + (object.data.x - clientPlayer.x)
+        let y = centerY + (object.data.y - clientPlayer.y)
+        object.graphics.position.set(x, y)
+    }
+    console.log("after:", scene.rectObstacles)
+}
+
+
+
+////////////////////////////// OTHER FUNCTIONS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+// function updatePlayers(players) {
+//     playerObj = players[clientPlayer]
+//     playerID.position.set(playerObj.x, playerObj.y)
+//     playerID.rotation = playerObj.rotation
+// }
+
+function requestMovement(deltaX, deltaY) {
+    var angle = Math.atan2(mouseY - centerY, mouseX - centerX) + .5*Math.PI;
+    socket.send(JSON.stringify({
+        'playerID': clientID,
+        'deltaX': deltaX,
+        'deltaY': deltaY,
+        'rotation': angle
+    }))
+}
 
 var keysDown = {
     "KeyW": false,
     "KeyA": false,
     "KeyS": false,
     "KeyD": false,
-}
+};
 onkeydown = onkeyup = (event) => {
     keysDown[event.code] = (event.type == "keydown")
 };
@@ -62,28 +144,32 @@ var mouseY = 0
 onmousemove = (event) => {
     mouseX = event.x
     mouseY = event.y
-}
+};
 
 function handleKeys () {
-    deltaX = 0
-    deltaY = 0
+    deltaX = 0;
+    deltaY = 0;
     if (keysDown["KeyW"]) {
-        deltaY -= 2
+        deltaY -= 2;
     }
     if (keysDown["KeyA"]) {
-        deltaX -= 2
+        deltaX -= 2;
     }
     if (keysDown["KeyS"]) {
-        deltaY += 2
+        deltaY += 2;
     }
     if (keysDown["KeyD"]) {
-        deltaX += 2
+        deltaX += 2;
     }
-    move(deltaX, deltaY)
-}
+    requestMovement(deltaX, deltaY)
+};
 
 function update() {
+    if (socket.readyState !== WebSocket.OPEN || !setup) {
+        return
+    }
     handleKeys()
 }
 
-setInterval(update, 16)
+
+setInterval(update, 15);

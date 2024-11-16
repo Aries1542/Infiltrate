@@ -9,6 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "two.js": "^0.8.14"
+    "express": "^4.21.1",
+    "two.js": "^0.8.14",
+    "ws": "^8.18.0"
   }
 }
