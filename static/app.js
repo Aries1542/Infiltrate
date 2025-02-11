@@ -21,12 +21,17 @@ socket.onmessage = (event) => {
             const {X, Y} = JSON.parse(event.data);
             Object.assign(clientGlobalPos, {x: X, y: Y});
             break;
+        case "remove":
+            const {Type, Id} = JSON.parse(event.data);
+            switch (Type) {
+                case "player":
+                    players.getById(Id).remove();
+                    break;
+            }
+            break;
         case "update":
             const {PlayersData} = JSON.parse(event.data);
-            console.log("my position: ", clientGlobalPos);
-            console.log("their position", PlayersData);
             globalToLocalCoords(clientGlobalPos, PlayersData);
-            console.log("their adjusted position", PlayersData);
             updatePlayers(players, PlayersData);
             break;
     }
@@ -98,7 +103,7 @@ const update = () => {
 };
 
 const globalToLocalCoords = (clientGlobalPos, data) => {
-    for (item of data) {
+    for (const item of data) {
         item.X = clientX + (item.X - clientGlobalPos.x);
         item.Y = clientY + (item.Y - clientGlobalPos.y);
     }

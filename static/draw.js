@@ -18,7 +18,7 @@ const updatePlayers = (players, playersData) => {
 };
 
 const drawPlayer = (x, y, rotation, id) => {
-    player = drawActor(x, y, rotation, "#6f6");
+    player = drawActor(x, y, rotation, "#6c6");
     player.id = id;
     return player;
 };

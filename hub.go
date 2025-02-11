@@ -12,6 +12,7 @@ import (
 type Hub struct {
 	sync.RWMutex
 	join    chan joinRequest
+	leave   chan *Client
 	update  chan updateRequest
 	clients map[*Client]int
 	nextID  int
@@ -39,6 +40,7 @@ type updateRequest struct {
 func newHub() *Hub {
 	return &Hub{
 		join:    make(chan joinRequest),
+		leave:   make(chan *Client),
 		update:  make(chan updateRequest),
 		clients: make(map[*Client]int),
 		nextID:  1,
@@ -58,33 +60,49 @@ func (h *Hub) run() {
 			h.Unlock()
 
 			client.setScene <- setSceneResponse{Requesting: "setScene", X: 0, Y: 0}
+
+		case leavingClient := <-h.leave:
+			leavingClientId := h.clients[leavingClient]
+			delete(h.clients, leavingClient)
+			close(leavingClient.setScene)
+			close(leavingClient.update)
+			close(leavingClient.remove)
+			for client := range h.clients {
+				client.remove <- removeResponse{
+					Requesting: "remove",
+					Type:       "player",
+					Id:         leavingClientId,
+				}
+			}
+
 		case request := <-h.update:
 			h.Lock()
-			player := player{
+			updatingPlayer := player{
 				Id:       h.clients[request.client],
 				X:        request.X,
 				Y:        request.Y,
 				Rotation: request.Rotation,
 			}
-			h.players[request.client] = player
+			h.players[request.client] = updatingPlayer
 			h.Unlock()
+
 		}
 	}
 }
 
 func (h *Hub) updateClients() {
 	for {
-		for clienti := range h.clients {
+		for receivingClient := range h.clients {
 			players := make([]player, 0)
 			h.RLock()
-			for clientj := range h.clients {
-				if clienti == clientj {
+			for client := range h.clients {
+				if receivingClient == client {
 					continue
 				}
-				players = append(players, h.players[clientj])
+				players = append(players, h.players[client])
 			}
 			h.RUnlock()
-			clienti.update <- updateResponse{Requesting: "update", PlayersData: players}
+			receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
 		}
 		time.Sleep(15 * time.Millisecond)
 	}

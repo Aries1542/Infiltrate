@@ -15,6 +15,7 @@ type Client struct {
 	conn     *websocket.Conn
 	setScene chan setSceneResponse
 	update   chan updateResponse
+	remove   chan removeResponse
 }
 
 type setSceneResponse struct {
@@ -26,10 +27,18 @@ type updateResponse struct {
 	Requesting  string
 	PlayersData []player
 }
+type removeResponse struct {
+	Requesting string
+	Type       string
+	Id         int
+}
 
 // fromClient pumps messages from the websocket connection to the hub.
 func (c *Client) fromClient() {
-	defer c.conn.Close()
+	defer func() {
+		c.conn.Close()
+		log.Println("fromClient() closing!")
+	}()
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -58,7 +67,11 @@ func (c *Client) fromClient() {
 }
 
 func (c *Client) toClient() {
-	defer c.conn.Close()
+	defer func() {
+		c.conn.Close()
+		log.Println("toClient() closing!")
+		c.hub.leave <- c
+	}()
 	for {
 		select {
 		case response := <-c.setScene:
@@ -70,6 +83,7 @@ func (c *Client) toClient() {
 			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
 			if err != nil {
 				log.Println("toClient(), WriteMessage()", err)
+				return
 			}
 		case response := <-c.update:
 			jsonResponse, err := json.Marshal(response)
@@ -79,6 +93,17 @@ func (c *Client) toClient() {
 			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
 			if err != nil {
 				log.Println("toClient(), WriteMessage()", err)
+				return
+			}
+		case response := <-c.remove:
+			jsonResponse, err := json.Marshal(response)
+			if err != nil {
+				log.Println("toClient(), json.Marshal()", err)
+			}
+			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
+			if err != nil {
+				log.Println("toClient(), WriteMessage()", err)
+				return
 			}
 		}
 	}
@@ -95,6 +120,7 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn:     conn,
 		setScene: make(chan setSceneResponse),
 		update:   make(chan updateResponse),
+		remove:   make(chan removeResponse),
 	}
 	request := joinRequest{client: client}
 	client.hub.join <- request
