@@ -104,6 +104,6 @@ func (h *Hub) updateClients() {
 			h.RUnlock()
 			receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
 		}
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
