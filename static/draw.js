@@ -2,7 +2,7 @@ const drawClient = (x, y) => {
     return drawActor(x, y, 0, "#18e");
 };
 
-const updatePlayers = (players, playersData) => {
+const updatePlayers = (playersData) => {
     for (const player of playersData) {
         if (player.Id === 0) {
             continue;
@@ -23,7 +23,7 @@ const drawPlayer = (x, y, rotation, id) => {
     return player;
 };
 
-const drawGuard = (x, y, rotation) => {
+const drawGuard = (x, y, rotation, id) => {
     guard = drawActor(x, y, rotation, "#d80");
     guard.id = id;
     return guard;
@@ -40,6 +40,23 @@ const drawActor = (x, y, rotation, color) => {
     actor.rotation = rotation;
     return actor;
 };
+
+const drawMap = (mapData) => {
+    console.log(mapData);
+    globalToLocalCoords(mapData);
+    for (const obstacleData of mapData) {
+        console.log(obstacleData);
+        obstacles.add(drawObstacle(obstacleData));
+    }
+}
+
+const drawObstacle = (obstacleData) => {
+    const { X, Y, Width, Height, Color } = obstacleData;
+    const obstacle = two.makeRectangle(X, Y, Width, Height);
+    obstacle.fill = Color;
+    obstacle.noStroke();
+    return obstacle;
+}
 
 const drawGrid = () => {
     const grid = two.makeGroup();

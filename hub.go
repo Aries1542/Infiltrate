@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -11,20 +15,32 @@ import (
 //	It will also continually send data to clients
 type Hub struct {
 	sync.RWMutex
-	join    chan joinRequest
-	leave   chan *Client
-	update  chan updateRequest
-	clients map[*Client]int
-	nextID  int
-	players map[*Client]player
-	objects []any
+	join      chan joinRequest
+	leave     chan *Client
+	update    chan updateRequest
+	clients   map[*Client]int
+	nextID    int
+	players   map[*Client]player
+	obstacles []obstacle
 }
 
+// a player is representation of the data needed to draw one client to another's screen
 type player struct {
 	Id       int
 	X        float32
 	Y        float32
 	Rotation float32
+}
+
+// An obstacle should be id-less, static, collidable, and rectangular.
+// X and Y represent the top-left corner of the object
+// Anything not matching these should be made as an item (to be implemented)
+type obstacle struct {
+	X      float32
+	Y      float32
+	Width  float32
+	Height float32
+	Color  string
 }
 
 type joinRequest struct {
@@ -37,15 +53,25 @@ type updateRequest struct {
 	Rotation float32
 }
 
+//type exampleJsonStruct struct {
+//	X        float32 `json:"x"`
+//	Y        float32 `json:"y"`
+//}
+
 func newHub() *Hub {
+	obstacles, err := readObstacles()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(obstacles)
 	return &Hub{
-		join:    make(chan joinRequest),
-		leave:   make(chan *Client),
-		update:  make(chan updateRequest),
-		clients: make(map[*Client]int),
-		nextID:  1,
-		players: make(map[*Client]player),
-		objects: make([]any, 0),
+		join:      make(chan joinRequest),
+		leave:     make(chan *Client),
+		update:    make(chan updateRequest),
+		clients:   make(map[*Client]int),
+		nextID:    1,
+		players:   make(map[*Client]player),
+		obstacles: obstacles,
 	}
 }
 
@@ -59,7 +85,7 @@ func (h *Hub) run() {
 			h.nextID++
 			h.Unlock()
 
-			client.setScene <- setSceneResponse{Requesting: "setScene", X: 0, Y: 0}
+			client.setScene <- setSceneResponse{Requesting: "setScene", X: 0, Y: 0, Obstacles: h.obstacles}
 
 		case leavingClient := <-h.leave:
 			leavingClientId := h.clients[leavingClient]
@@ -106,4 +132,18 @@ func (h *Hub) updateClients() {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+func readObstacles() ([]obstacle, error) {
+	obstacles := make([]obstacle, 0)
+	content, err := os.ReadFile("./mapData.json")
+	if err != nil {
+		log.Fatal("Error when opening file: ", err)
+	}
+	err = json.Unmarshal(content, &obstacles)
+	if err != nil {
+		obstacles = make([]obstacle, 0)
+		return obstacles, errors.New("could not read file data, continuing with empty obstacles")
+	}
+	return obstacles, nil
 }

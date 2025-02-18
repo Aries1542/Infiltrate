@@ -7,9 +7,10 @@ const two = new Two(params).appendTo(elem); // Base class used for all drawing
 let clientX = .5 * two.width;
 let clientY = .5 * two.height;
 let mouseX = 0, mouseY = 0;
+const moveSpeed = 1;
 const clientGlobalPos = {x: 0, y: 0};
 const grid = drawGrid(clientX, clientY);
-const objects = two.makeGroup();
+const obstacles = two.makeGroup();
 const players = two.makeGroup();
 const client = drawClient(clientX, clientY);
 
@@ -18,8 +19,10 @@ socket.onmessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
-            const {X, Y} = JSON.parse(event.data);
+            const {X, Y, Obstacles: mapData} = JSON.parse(event.data);
             Object.assign(clientGlobalPos, {x: X, y: Y});
+            drawMap(mapData)
+            console.log(obstacles)
             break;
         case "remove":
             const {Type, Id} = JSON.parse(event.data);
@@ -31,8 +34,8 @@ socket.onmessage = (event) => {
             break;
         case "update":
             const {PlayersData} = JSON.parse(event.data);
-            globalToLocalCoords(clientGlobalPos, PlayersData);
-            updatePlayers(players, PlayersData);
+            globalToLocalCoords(PlayersData);
+            updatePlayers(PlayersData);
             break;
     }
 };
@@ -83,11 +86,11 @@ const getKeyInput = () => {
 }
 
 const update = () => {
-    const moveSpeed = 1;
-    const delta = getKeyInput();
+    let delta = getKeyInput();
     delta.x *= moveSpeed; delta.y *= moveSpeed;
+    collideDelta(delta);
     grid.position.subtract(delta);
-    objects.position.subtract(delta);
+    obstacles.position.subtract(delta);
     clientGlobalPos.x += delta.x;
     clientGlobalPos.y += delta.y;
 
@@ -102,10 +105,41 @@ const update = () => {
     }));
 };
 
-const globalToLocalCoords = (clientGlobalPos, data) => {
-    for (const item of data) {
-        item.X = clientX + (item.X - clientGlobalPos.x);
-        item.Y = clientY + (item.Y - clientGlobalPos.y);
+const collideDelta = (delta) => {
+    const clientR = 25
+    const nextX = clientX + delta.x;
+    const nextY = clientY + delta.y;
+    for (let obstacle of obstacles.children) {
+        const obstacleX = obstacle.position.x + obstacles.position.x;
+        const obstacleY = obstacle.position.y + obstacles.position.y;
+        const distX = Math.abs(clientX - obstacleX);
+        const distY = Math.abs(clientY - obstacleY);
+        const nextDistX = Math.abs(nextX - obstacleX);
+        const nextDistY = Math.abs(nextY - obstacleY);
+
+        if ((distY < ((obstacle.height*.5)+clientR)) && (nextDistX <= (obstacle.width*.5)+clientR)) { // collision on x-axis
+            // console.log("X Collision")
+            delta.x = (distX - ((obstacle.width*.5)+clientR))*(delta.x/moveSpeed);
+        }
+        if ((distX < ((obstacle.width*.5)+clientR)) && (nextDistY <= ((obstacle.height*.5)+clientR))) { // collision on y-axis
+            // console.log("Y Collision")
+            delta.y = (distY - ((obstacle.height*.5)+clientR))*(delta.y/moveSpeed);
+        }
+    }
+    return delta
+}
+
+
+// Takes a List of data and converts x and y for each item to local coordinates
+// Note: Needs to be refactored later to recurse through any data structure
+// Or at least work for single objects as well
+const globalToLocalCoords = (data) => {
+    for (const datum of data) {
+        console.log(clientX, clientY)
+        console.log(datum)
+        datum.X = clientX + (datum.X - clientGlobalPos.x);
+        datum.Y = clientY + (datum.Y - clientGlobalPos.y);
+        console.log(datum)
     }
 };
 
