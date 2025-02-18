@@ -4,6 +4,7 @@ const params = {
 };
 const elem = document.body;
 const two = new Two(params).appendTo(elem); // Base class used for all drawing
+two.renderer.domElement.style.background = '#ddd'
 let clientX = .5 * two.width;
 let clientY = .5 * two.height;
 let mouseX = 0, mouseY = 0;
@@ -22,7 +23,6 @@ socket.onmessage = (event) => {
             const {X, Y, Obstacles: mapData} = JSON.parse(event.data);
             Object.assign(clientGlobalPos, {x: X, y: Y});
             drawMap(mapData)
-            console.log(obstacles)
             break;
         case "remove":
             const {Type, Id} = JSON.parse(event.data);
@@ -122,11 +122,9 @@ const collideDelta = (delta) => {
         const nextDistY = Math.abs(nextY - obstacleY);
 
         if ((distY < ((obstacle.height*.5)+clientR)) && (nextDistX <= (obstacle.width*.5)+clientR)) { // collision on x-axis
-            // console.log("X Collision")
             delta.x = (distX - ((obstacle.width*.5)+clientR))*(delta.x/moveSpeed);
         }
         if ((distX < ((obstacle.width*.5)+clientR)) && (nextDistY <= ((obstacle.height*.5)+clientR))) { // collision on y-axis
-            // console.log("Y Collision")
             delta.y = (distY - ((obstacle.height*.5)+clientR))*(delta.y/moveSpeed);
         }
     }
@@ -139,11 +137,8 @@ const collideDelta = (delta) => {
 // Or at least work for single objects as well
 const globalToLocalCoords = (data) => {
     for (const datum of data) {
-        console.log(clientX, clientY)
-        console.log(datum)
         datum.X = clientX + (datum.X - clientGlobalPos.x);
         datum.Y = clientY + (datum.Y - clientGlobalPos.y);
-        console.log(datum)
     }
 };
 

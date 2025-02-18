@@ -42,17 +42,16 @@ const drawActor = (x, y, rotation, color) => {
 };
 
 const drawMap = (mapData) => {
-    console.log(mapData);
     globalToLocalCoords(mapData);
     for (const obstacleData of mapData) {
-        console.log(obstacleData);
         obstacles.add(drawObstacle(obstacleData));
     }
 }
 
 const drawObstacle = (obstacleData) => {
     const { X, Y, Width, Height, Color } = obstacleData;
-    const obstacle = two.makeRectangle(X, Y, Width, Height);
+    const adjustedX = X + Width*.5, adjustedY = Y + Height*.5;
+    const obstacle = two.makeRectangle(adjustedX, adjustedY, Width, Height);
     obstacle.fill = Color;
     obstacle.noStroke();
     return obstacle;
@@ -60,15 +59,20 @@ const drawObstacle = (obstacleData) => {
 
 const drawGrid = () => {
     const grid = two.makeGroup();
-    for (let i = -two.width; i < 2*two.width; i += 50) {
-        const line = two.makeLine(i, -two.height, i, 2*two.height);
+    const adjustedHeight = 2*two.height - ((2*two.height)%105);
+    const adjustedWidth = 2*two.width - ((2*two.width)%105);
+    for (let i = -adjustedWidth*.5; i < adjustedWidth; i += 105) {
+        const line = two.makeLine(i, -adjustedHeight*.5, i, adjustedHeight);
         line.stroke = "#333";
+        line.lineWidth = 10;
         grid.add(line);
     }
-    for (let i = -two.height; i < 2*two.height; i += 50) {
-        const line = two.makeLine(-two.width, i, 2*two.width, i);
+    for (let i = -adjustedHeight*.5; i < adjustedHeight; i += 105) {
+        const line = two.makeLine(-adjustedWidth*.5, i, adjustedWidth, i);
         line.stroke = "#333";
+        line.lineWidth = 10;
         grid.add(line);
     }
+    grid.position.set(clientX-52.5, clientY+52.5)
     return grid;
 };
