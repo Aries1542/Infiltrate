@@ -22,6 +22,7 @@ type Hub struct {
 	nextID    int
 	players   map[*Client]player
 	obstacles []obstacle
+	items     []item
 }
 
 // a player is representation of the data needed to draw one client to another's screen
@@ -43,6 +44,15 @@ type obstacle struct {
 	Color  string
 }
 
+// An item is anything that should be displayed and interacted with by the player, that does not fit as an obstacle.
+// The client will use the Type field to determine how to display and interact with the item
+type item struct {
+	Id   int
+	Type string
+	X    float32
+	Y    float32
+}
+
 type joinRequest struct {
 	client *Client
 }
@@ -59,11 +69,10 @@ type updateRequest struct {
 //}
 
 func newHub() *Hub {
-	obstacles, err := readObstacles()
+	obstacles, items, err := readObstacles()
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(obstacles)
 	return &Hub{
 		join:      make(chan joinRequest),
 		leave:     make(chan *Client),
@@ -72,6 +81,7 @@ func newHub() *Hub {
 		nextID:    1,
 		players:   make(map[*Client]player),
 		obstacles: obstacles,
+		items:     items,
 	}
 }
 
@@ -85,7 +95,13 @@ func (h *Hub) run() {
 			h.nextID++
 			h.Unlock()
 
-			client.setScene <- setSceneResponse{Requesting: "setScene", X: 0, Y: 0, Obstacles: h.obstacles}
+			client.setScene <- setSceneResponse{
+				Requesting: "setScene",
+				X:          0,
+				Y:          0,
+				Obstacles:  h.obstacles,
+				Items:      h.items,
+			}
 
 		case leavingClient := <-h.leave:
 			leavingClientId := h.clients[leavingClient]
@@ -134,16 +150,21 @@ func (h *Hub) updateClients() {
 	}
 }
 
-func readObstacles() ([]obstacle, error) {
-	obstacles := make([]obstacle, 0)
+func readObstacles() ([]obstacle, []item, error) {
 	content, err := os.ReadFile("./mapData.json")
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
 	}
-	err = json.Unmarshal(content, &obstacles)
+	mapData := struct {
+		Obstacles []obstacle
+		Items     []item
+	}{}
+
+	err = json.Unmarshal(content, &mapData)
 	if err != nil {
-		obstacles = make([]obstacle, 0)
-		return obstacles, errors.New("could not read file data, continuing with empty obstacles")
+		obstacles := make([]obstacle, 0)
+		items := make([]item, 0)
+		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
 	}
-	return obstacles, nil
+	return mapData.Obstacles, mapData.Items, nil
 }

@@ -20,9 +20,9 @@ socket.onmessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
-            const {X, Y, Obstacles: mapData} = JSON.parse(event.data);
+            const {X, Y, Obstacles, Items} = JSON.parse(event.data);
             Object.assign(clientGlobalPos, {x: X, y: Y});
-            drawMap(mapData)
+            drawMap(Obstacles);
             break;
         case "remove":
             const {Type, Id} = JSON.parse(event.data);

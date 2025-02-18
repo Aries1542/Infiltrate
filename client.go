@@ -23,6 +23,7 @@ type setSceneResponse struct {
 	X          float32
 	Y          float32
 	Obstacles  []obstacle
+	Items      []item
 }
 type updateResponse struct {
 	Requesting  string
