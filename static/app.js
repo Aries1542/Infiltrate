@@ -7,7 +7,7 @@ const two = new Two(params).appendTo(elem); // Base class used for all drawing
 let clientX = .5 * two.width;
 let clientY = .5 * two.height;
 let mouseX = 0, mouseY = 0;
-const moveSpeed = 1;
+const moveSpeed = 2;
 const clientGlobalPos = {x: 0, y: 0};
 const grid = drawGrid(clientX, clientY);
 const obstacles = two.makeGroup();
@@ -81,6 +81,10 @@ const getKeyInput = () => {
     }
     if (keysDown["KeyD"]) {
         delta.x += 1;
+    }
+    if (delta.x && delta.y) {
+        delta.x *= .70710678 // sqrt(1/2)
+        delta.y *= .70710678
     }
     return delta;
 }
