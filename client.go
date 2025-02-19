@@ -20,6 +20,7 @@ type Client struct {
 
 type setSceneResponse struct {
 	Requesting string
+	Id         string
 	X          float32
 	Y          float32
 	Obstacles  []obstacle

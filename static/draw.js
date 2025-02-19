@@ -4,7 +4,7 @@ const drawClient = (x, y) => {
 
 const updatePlayers = (playersData) => {
     for (const player of playersData) {
-        if (player.Id === '') {
+        if (player.Id === '' || player.Id === clientId) {
             continue;
         }
         if (players.getById(player.Id) === null) {

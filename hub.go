@@ -104,6 +104,7 @@ func (h *Hub) run() {
 
 			client.setScene <- setSceneResponse{
 				Requesting: "setScene",
+				Id:         h.players[client].Id,
 				X:          0,
 				Y:          0,
 				Obstacles:  h.obstacles,
@@ -141,16 +142,13 @@ func (h *Hub) run() {
 
 func (h *Hub) updateClients() {
 	for {
+		players := make([]player, 0)
+		h.RLock()
+		for client := range h.players {
+			players = append(players, h.players[client])
+		}
+		h.RUnlock()
 		for receivingClient := range h.players {
-			players := make([]player, 0)
-			h.RLock()
-			for client := range h.players {
-				if receivingClient == client {
-					continue
-				}
-				players = append(players, h.players[client])
-			}
-			h.RUnlock()
 			receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
 		}
 		time.Sleep(10 * time.Millisecond)
