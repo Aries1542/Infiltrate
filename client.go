@@ -39,7 +39,6 @@ type removeResponse struct {
 func (c *Client) fromClient() {
 	defer func() {
 		c.conn.Close()
-		log.Println("fromClient() closing!")
 	}()
 	for {
 		_, message, err := c.conn.ReadMessage()
@@ -71,7 +70,6 @@ func (c *Client) fromClient() {
 func (c *Client) toClient() {
 	defer func() {
 		c.conn.Close()
-		log.Println("toClient() closing!")
 		c.hub.leave <- c
 	}()
 	for {

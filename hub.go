@@ -19,7 +19,6 @@ type Hub struct {
 	join      chan joinRequest
 	leave     chan *Client
 	update    chan updateRequest
-	clients   map[*Client]string
 	nextID    int
 	players   map[*Client]player
 	obstacles []obstacle
@@ -32,6 +31,7 @@ type player struct {
 	X        float32
 	Y        float32
 	Rotation float32
+	Score    int
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -79,7 +79,6 @@ func newHub() *Hub {
 		join:      make(chan joinRequest),
 		leave:     make(chan *Client),
 		update:    make(chan updateRequest),
-		clients:   make(map[*Client]string),
 		nextID:    1,
 		players:   make(map[*Client]player),
 		obstacles: obstacles,
@@ -93,7 +92,13 @@ func (h *Hub) run() {
 		case request := <-h.join:
 			h.Lock()
 			client := request.client
-			h.clients[client] = "player" + strconv.Itoa(h.nextID)
+			h.players[client] = player{
+				Id:       "player" + strconv.Itoa(h.nextID),
+				X:        0,
+				Y:        0,
+				Rotation: 0,
+				Score:    0,
+			}
 			h.nextID++
 			h.Unlock()
 
@@ -106,12 +111,12 @@ func (h *Hub) run() {
 			}
 
 		case leavingClient := <-h.leave:
-			leavingClientId := h.clients[leavingClient]
-			delete(h.clients, leavingClient)
+			leavingClientId := h.players[leavingClient].Id
+			delete(h.players, leavingClient)
 			close(leavingClient.setScene)
 			close(leavingClient.update)
 			close(leavingClient.remove)
-			for client := range h.clients {
+			for client := range h.players {
 				client.remove <- removeResponse{
 					Requesting: "remove",
 					Type:       "player",
@@ -121,16 +126,14 @@ func (h *Hub) run() {
 
 		case request := <-h.update:
 			h.Lock()
-			updatingPlayer := player{
-				Id:       h.clients[request.client],
-				X:        request.X,
-				Y:        request.Y,
-				Rotation: request.Rotation,
-			}
+			updatingPlayer := h.players[request.client]
+			updatingPlayer.X = request.X
+			updatingPlayer.Y = request.Y
+			updatingPlayer.Rotation = request.Rotation
 			h.players[request.client] = updatingPlayer
 			h.Unlock()
 			if request.Interaction != "" {
-				h.handleInteraction(request.Interaction)
+				h.handleInteraction(request.Interaction, request.client)
 			}
 		}
 	}
@@ -138,10 +141,10 @@ func (h *Hub) run() {
 
 func (h *Hub) updateClients() {
 	for {
-		for receivingClient := range h.clients {
+		for receivingClient := range h.players {
 			players := make([]player, 0)
 			h.RLock()
-			for client := range h.clients {
+			for client := range h.players {
 				if receivingClient == client {
 					continue
 				}
@@ -174,27 +177,34 @@ func readObstacles() ([]obstacle, []item, error) {
 	return mapData.Obstacles, mapData.Items, nil
 }
 
-func (h *Hub) handleInteraction(interaction string) {
-	var interacted item
+func (h *Hub) handleInteraction(interactionId string, client *Client) {
+	interacted := -1
 	for itemIndex := range h.items {
-		if h.items[itemIndex].Id == interaction {
-			interacted = h.items[itemIndex]
-			h.items[itemIndex] = h.items[len(h.items)-1]
-			h.items = h.items[:len(h.items)-1]
+		if h.items[itemIndex].Id == interactionId {
+			interacted = itemIndex
 			break
 		}
 	}
-	if interacted.Id == "" {
-		log.Println("interaction requested with invalid id: ", interaction)
+	if interacted == -1 {
+		log.Println("interaction requested with invalid id: ", interactionId)
 		return
 	}
-	switch interacted.Type {
+	switch h.items[interacted].Type {
 	case "coin":
-		for client := range h.clients {
-			client.remove <- removeResponse{
+		h.Lock()
+		h.items[interacted] = h.items[len(h.items)-1]
+		h.items = h.items[:len(h.items)-1]
+
+		updatingPlayer := h.players[client]
+		updatingPlayer.Score++
+		h.players[client] = updatingPlayer
+		h.Unlock()
+
+		for eachClient := range h.players {
+			eachClient.remove <- removeResponse{
 				Requesting: "remove",
 				Type:       "item",
-				Id:         interacted.Id,
+				Id:         interactionId,
 			}
 		}
 	}

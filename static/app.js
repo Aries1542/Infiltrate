@@ -26,6 +26,11 @@ socket.onmessage = (event) => {
             Object.assign(clientGlobalPos, {x: X, y: Y});
             drawMap(mapData);
             break;
+        case "update":
+            const {PlayersData} = JSON.parse(event.data);
+            globalToLocalCoords(PlayersData);
+            updatePlayers(PlayersData);
+            break;
         case "remove":
             const {Type, Id} = JSON.parse(event.data);
             switch (Type) {
@@ -36,11 +41,6 @@ socket.onmessage = (event) => {
                     items.getById(Id).remove();
                     break;
             }
-            break;
-        case "update":
-            const {PlayersData} = JSON.parse(event.data);
-            globalToLocalCoords(PlayersData);
-            updatePlayers(PlayersData);
             break;
     }
 };
