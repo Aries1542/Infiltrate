@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -18,7 +19,7 @@ type Hub struct {
 	join      chan joinRequest
 	leave     chan *Client
 	update    chan updateRequest
-	clients   map[*Client]int
+	clients   map[*Client]string
 	nextID    int
 	players   map[*Client]player
 	obstacles []obstacle
@@ -27,7 +28,7 @@ type Hub struct {
 
 // a player is representation of the data needed to draw one client to another's screen
 type player struct {
-	Id       int
+	Id       string
 	X        float32
 	Y        float32
 	Rotation float32
@@ -47,7 +48,7 @@ type obstacle struct {
 // An item is anything that should be displayed and interacted with by the player, that does not fit as an obstacle.
 // The client will use the Type field to determine how to display and interact with the item
 type item struct {
-	Id   int
+	Id   string
 	Type string
 	X    float32
 	Y    float32
@@ -57,10 +58,11 @@ type joinRequest struct {
 	client *Client
 }
 type updateRequest struct {
-	client   *Client
-	X        float32
-	Y        float32
-	Rotation float32
+	client      *Client
+	X           float32
+	Y           float32
+	Rotation    float32
+	Interaction string
 }
 
 //type exampleJsonStruct struct {
@@ -77,7 +79,7 @@ func newHub() *Hub {
 		join:      make(chan joinRequest),
 		leave:     make(chan *Client),
 		update:    make(chan updateRequest),
-		clients:   make(map[*Client]int),
+		clients:   make(map[*Client]string),
 		nextID:    1,
 		players:   make(map[*Client]player),
 		obstacles: obstacles,
@@ -91,7 +93,7 @@ func (h *Hub) run() {
 		case request := <-h.join:
 			h.Lock()
 			client := request.client
-			h.clients[client] = h.nextID
+			h.clients[client] = "player" + strconv.Itoa(h.nextID)
 			h.nextID++
 			h.Unlock()
 
@@ -127,7 +129,9 @@ func (h *Hub) run() {
 			}
 			h.players[request.client] = updatingPlayer
 			h.Unlock()
-
+			if request.Interaction != "" {
+				h.handleInteraction(request.Interaction)
+			}
 		}
 	}
 }
@@ -164,7 +168,34 @@ func readObstacles() ([]obstacle, []item, error) {
 	if err != nil {
 		obstacles := make([]obstacle, 0)
 		items := make([]item, 0)
+		log.Println(err)
 		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
 	}
 	return mapData.Obstacles, mapData.Items, nil
+}
+
+func (h *Hub) handleInteraction(interaction string) {
+	var interacted item
+	for itemIndex := range h.items {
+		if h.items[itemIndex].Id == interaction {
+			interacted = h.items[itemIndex]
+			h.items[itemIndex] = h.items[len(h.items)-1]
+			h.items = h.items[:len(h.items)-1]
+			break
+		}
+	}
+	if interacted.Id == "" {
+		log.Println("interaction requested with invalid id: ", interaction)
+		return
+	}
+	switch interacted.Type {
+	case "coin":
+		for client := range h.clients {
+			client.remove <- removeResponse{
+				Requesting: "remove",
+				Type:       "item",
+				Id:         interacted.Id,
+			}
+		}
+	}
 }

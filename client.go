@@ -32,7 +32,7 @@ type updateResponse struct {
 type removeResponse struct {
 	Requesting string
 	Type       string
-	Id         int
+	Id         string
 }
 
 // fromClient pumps messages from the websocket connection to the hub.

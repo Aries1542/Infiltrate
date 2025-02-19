@@ -42,9 +42,13 @@ const drawActor = (x, y, rotation, color) => {
 };
 
 const drawMap = (mapData) => {
-    globalToLocalCoords(mapData);
-    for (const obstacleData of mapData) {
+    globalToLocalCoords(mapData.obstacles);
+    globalToLocalCoords(mapData.items);
+    for (const obstacleData of mapData.obstacles) {
         obstacles.add(drawObstacle(obstacleData));
+    }
+    for (const itemData of mapData.items) {
+        items.add(drawItem(itemData))
     }
 }
 
@@ -55,6 +59,24 @@ const drawObstacle = (obstacleData) => {
     obstacle.fill = Color;
     obstacle.noStroke();
     return obstacle;
+}
+
+const drawItem = (itemData) => {
+    switch (itemData.Type) {
+        case "coin":
+            return drawCoin(itemData)
+        default:
+            console.log("unknown item type " + itemData.Type + ", skipping draw");
+    }
+}
+
+const drawCoin = (coinData) => {
+    const circle = two.makeCircle(coinData.X, coinData.Y, 10);
+    circle.fill = "#fe7";
+    circle.stroke = "#ea2";
+    circle.type = coinData.Type;
+    circle.id = coinData.Id;
+    return circle;
 }
 
 const drawGrid = () => {

@@ -12,6 +12,7 @@ const moveSpeed = 2;
 const clientGlobalPos = {x: 0, y: 0};
 const grid = drawGrid(clientX, clientY);
 const obstacles = two.makeGroup();
+const items = two.makeGroup();
 const players = two.makeGroup();
 const client = drawClient(clientX, clientY);
 
@@ -21,14 +22,18 @@ socket.onmessage = (event) => {
     switch (Requesting) {
         case "setScene":
             const {X, Y, Obstacles, Items} = JSON.parse(event.data);
+            const mapData = {obstacles: Obstacles, items: Items};
             Object.assign(clientGlobalPos, {x: X, y: Y});
-            drawMap(Obstacles);
+            drawMap(mapData);
             break;
         case "remove":
             const {Type, Id} = JSON.parse(event.data);
             switch (Type) {
                 case "player":
                     players.getById(Id).remove();
+                    break;
+                case "item":
+                    items.getById(Id).remove();
                     break;
             }
             break;
@@ -95,10 +100,12 @@ const update = () => {
     collideDelta(delta);
     grid.position.subtract(delta);
     obstacles.position.subtract(delta);
+    items.position.subtract(delta);
     clientGlobalPos.x += delta.x;
     clientGlobalPos.y += delta.y;
-
     client.rotation = Math.atan2(mouseY - clientY, mouseX - clientX) + .5*Math.PI;
+
+    const id = updateItems();
 
     if (socket.readyState !== socket.OPEN) return;
     socket.send(JSON.stringify({
@@ -106,6 +113,7 @@ const update = () => {
         X: clientGlobalPos.x,
         Y: clientGlobalPos.y,
         Rotation: client.rotation,
+        Interaction: id,
     }));
 };
 
@@ -131,6 +139,31 @@ const collideDelta = (delta) => {
     return delta
 }
 
+const updateItems = () => {
+    for (const item of items.children) {
+        switch (item.type) {
+            case "coin":
+                const id = updateCoin(item);
+                if (id) return id;
+                break;
+            default:
+                console.log("unknown item type " + item.type + ", skipping update");
+        }
+    }
+    return "";
+}
+
+const updateCoin = (coin) => {
+    const clientR = 25
+    const coinR = 10
+    const coinX = coin.position.x + items.position.x
+    const coinY = coin.position.y + items.position.y
+    const centerDistSq = (clientX - coinX)**2 + (clientY - coinY)**2
+    if (centerDistSq < (clientR+coinR)**2) {
+        return coin.id;
+    }
+    return null
+}
 
 // Takes a List of data and converts x and y for each item to local coordinates
 // Note: Needs to be refactored later to recurse through any data structure
