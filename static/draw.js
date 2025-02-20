@@ -1,10 +1,26 @@
 const drawUI = () => {
     const UI = two.makeGroup();
-    UI.add(drawScoreBoard());
+    UI.add(drawScoreboard());
     return UI;
 }
 
-const drawScoreBoard = () => {
+const updateScoreboard = (playerData) => {
+    const playerScores = playerData.toSorted((p1, p2) => {
+        if (p2.Score !== p1.Score) return p2.Score - p1.Score;
+        return (p1.Username.toLowerCase() > p2.Username.toLowerCase()) ? 1:-1;
+    })
+    console.log(playerScores);
+    const scoreboard = UI.getById("scoreboard")
+    for (let i = 0; i < playerScores.length; i++) {
+        const player = playerScores[i];
+        scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.Username+": "+player.Score;
+    }
+    if (playerScores.length < 6) for (let i = playerScores.length; i < 6; i++) {
+        scoreboard.getById("pos" + (i + 1)).value = i+". -";
+    }
+}
+
+const drawScoreboard = () => {
     const scoreboard = two.makeGroup();
     scoreboard.id = "scoreboard";
 
@@ -23,14 +39,14 @@ const drawScoreBoard = () => {
     });
     scoreboard.add(title)
 
-    const leaders = getScoreboardLeaders()
-    for (let i = 1; i < leaders.length+1; i++) {
-        const score = two.makeText((i)+". "+leaders[i-1], 20, title.position.y + (i)*30, {
+    for (let i = 1; i < 6; i++) {
+        const score = two.makeText((i)+". "+"-", 20, title.position.y + (i)*30, {
             fill: "#fff",
             size: 28,
             alignment: "left",
             baseline: "top",
         });
+        score.id = "pos"+i
         scoreboard.add(score)
     }
 
@@ -42,10 +58,6 @@ const drawScoreBoard = () => {
     background.origin.set(-.5*background.width, -.5*background.height);
 
     return scoreboard;
-}
-
-const getScoreboardLeaders = () => {
-    return ["abc: 11", "bcd: 8", "aries1542: 1", "-", "-"]
 }
 
 const drawClient = (x, y) => {

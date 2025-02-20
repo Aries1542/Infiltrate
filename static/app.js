@@ -34,6 +34,7 @@ socket.onmessage = (event) => {
             const {PlayersData} = JSON.parse(event.data);
             globalToLocalCoords(PlayersData);
             updatePlayers(PlayersData);
+            updateScoreboard(PlayersData);
             break;
         case "remove":
             const {Type, Id: removeId} = JSON.parse(event.data);

@@ -28,6 +28,7 @@ type Hub struct {
 // a player is representation of the data needed to draw one client to another's screen
 type player struct {
 	Id       string
+	Username string
 	X        float32
 	Y        float32
 	Rotation float32
@@ -94,6 +95,7 @@ func (h *Hub) run() {
 			client := request.client
 			h.players[client] = player{
 				Id:       "player" + strconv.Itoa(h.nextID),
+				Username: "player" + strconv.Itoa(h.nextID),
 				X:        0,
 				Y:        0,
 				Rotation: 0,
