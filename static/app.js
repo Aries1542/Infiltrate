@@ -17,6 +17,7 @@ const obstacles = two.makeGroup();
 const items = two.makeGroup();
 const players = two.makeGroup();
 const client = drawClient(clientX, clientY);
+const UI = drawUI();
 
 const socket = new WebSocket("/ws");
 socket.onmessage = (event) => {
