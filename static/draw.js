@@ -9,14 +9,13 @@ const updateScoreboard = (playerData) => {
         if (p2.Score !== p1.Score) return p2.Score - p1.Score;
         return (p1.Username.toLowerCase() > p2.Username.toLowerCase()) ? 1:-1;
     })
-    console.log(playerScores);
     const scoreboard = UI.getById("scoreboard")
     for (let i = 0; i < playerScores.length; i++) {
         const player = playerScores[i];
         scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.Username+": "+player.Score;
     }
-    if (playerScores.length < 6) for (let i = playerScores.length; i < 6; i++) {
-        scoreboard.getById("pos" + (i + 1)).value = i+". -";
+    if (playerScores.length < 6) for (let i = playerScores.length; i < 5; i++) {
+        scoreboard.getById("pos" + (i+1)).value = (i+1)+". -";
     }
 }
 
@@ -29,7 +28,6 @@ const drawScoreboard = () => {
     background.opacity = .7;
     background.fill = "#000";
     scoreboard.add(background)
-    const temp = scoreboard.children[scoreboard.children.length - 1]
 
     const title = two.makeText("Leaderboard", 20, 20, {
         fill: "#fff",

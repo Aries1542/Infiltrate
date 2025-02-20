@@ -50,7 +50,7 @@ socket.onmessage = (event) => {
     }
 };
 
-socket.onopen = (event) => {
+socket.onopen = () => {
     console.log("Connected to server");
 };
 
