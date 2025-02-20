@@ -5,6 +5,8 @@ const params = {
 const elem = document.body;
 const two = new Two(params).appendTo(elem); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
+
+let clientId = "";
 let clientX = .5 * two.width;
 let clientY = .5 * two.height;
 let mouseX = 0, mouseY = 0;
@@ -15,13 +17,15 @@ const obstacles = two.makeGroup();
 const items = two.makeGroup();
 const players = two.makeGroup();
 const client = drawClient(clientX, clientY);
+const UI = drawUI();
 
 const socket = new WebSocket("/ws");
 socket.onmessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
-            const {X, Y, Obstacles, Items} = JSON.parse(event.data);
+            const {Id: myId, X, Y, Obstacles, Items} = JSON.parse(event.data);
+            clientId = myId
             const mapData = {obstacles: Obstacles, items: Items};
             Object.assign(clientGlobalPos, {x: X, y: Y});
             drawMap(mapData);
@@ -30,22 +34,23 @@ socket.onmessage = (event) => {
             const {PlayersData} = JSON.parse(event.data);
             globalToLocalCoords(PlayersData);
             updatePlayers(PlayersData);
+            updateScoreboard(PlayersData);
             break;
         case "remove":
-            const {Type, Id} = JSON.parse(event.data);
+            const {Type, Id: removeId} = JSON.parse(event.data);
             switch (Type) {
                 case "player":
-                    players.getById(Id).remove();
+                    players.getById(removeId).remove();
                     break;
                 case "item":
-                    items.getById(Id).remove();
+                    items.getById(removeId).remove();
                     break;
             }
             break;
     }
 };
 
-socket.onopen = (event) => {
+socket.onopen = () => {
     console.log("Connected to server");
 };
 

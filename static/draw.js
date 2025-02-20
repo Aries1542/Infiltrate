@@ -1,10 +1,70 @@
+const drawUI = () => {
+    const UI = two.makeGroup();
+    UI.add(drawScoreboard());
+    return UI;
+}
+
+const updateScoreboard = (playerData) => {
+    const playerScores = playerData.toSorted((p1, p2) => {
+        if (p2.Score !== p1.Score) return p2.Score - p1.Score;
+        return (p1.Username.toLowerCase() > p2.Username.toLowerCase()) ? 1:-1;
+    })
+    const scoreboard = UI.getById("scoreboard")
+    for (let i = 0; i < playerScores.length; i++) {
+        const player = playerScores[i];
+        scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.Username+": "+player.Score;
+    }
+    if (playerScores.length < 6) for (let i = playerScores.length; i < 5; i++) {
+        scoreboard.getById("pos" + (i+1)).value = (i+1)+". -";
+    }
+}
+
+const drawScoreboard = () => {
+    const scoreboard = two.makeGroup();
+    scoreboard.id = "scoreboard";
+
+    const background = two.makeRectangle(0, 0, 200, 300)
+    background.origin.set(-.5*background.width, -.5*background.height);
+    background.opacity = .7;
+    background.fill = "#000";
+    scoreboard.add(background)
+
+    const title = two.makeText("Leaderboard", 20, 20, {
+        fill: "#fff",
+        size: 32,
+        alignment: "left",
+        baseline: "top",
+    });
+    scoreboard.add(title)
+
+    for (let i = 1; i < 6; i++) {
+        const score = two.makeText((i)+". "+"-", 20, title.position.y + (i)*30, {
+            fill: "#fff",
+            size: 28,
+            alignment: "left",
+            baseline: "top",
+        });
+        score.id = "pos"+i
+        scoreboard.add(score)
+    }
+
+    const totalWidth = Math.max(...(scoreboard.children.map((text) => {return text.getBoundingClientRect().width})))
+    const totalHeight = scoreboard.children[scoreboard.children.length - 1].position.y
+                      + scoreboard.children[scoreboard.children.length - 1].getBoundingClientRect().height;
+    background.width = totalWidth+20;
+    background.height = totalHeight+20;
+    background.origin.set(-.5*background.width, -.5*background.height);
+
+    return scoreboard;
+}
+
 const drawClient = (x, y) => {
     return drawActor(x, y, 0, "#18e");
 };
 
 const updatePlayers = (playersData) => {
     for (const player of playersData) {
-        if (player.Id === '') {
+        if (player.Id === '' || player.Id === clientId) {
             continue;
         }
         if (players.getById(player.Id) === null) {
@@ -18,13 +78,13 @@ const updatePlayers = (playersData) => {
 };
 
 const drawPlayer = (x, y, rotation, id) => {
-    player = drawActor(x, y, rotation, "#6c6");
+    const player = drawActor(x, y, rotation, "#6c6");
     player.id = id;
     return player;
 };
 
 const drawGuard = (x, y, rotation, id) => {
-    guard = drawActor(x, y, rotation, "#d80");
+    const guard = drawActor(x, y, rotation, "#d80");
     guard.id = id;
     return guard;
 };
