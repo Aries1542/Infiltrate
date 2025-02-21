@@ -143,17 +143,20 @@ func (h *Hub) run() {
 }
 
 func (h *Hub) updateClients() {
+	updateTicker := time.NewTicker(10 * time.Millisecond)
 	for {
-		players := make([]player, 0)
-		h.RLock()
-		for client := range h.players {
-			players = append(players, h.players[client])
+		select {
+		case <-updateTicker.C:
+			players := make([]player, 0)
+			h.RLock()
+			for client := range h.players {
+				players = append(players, h.players[client])
+			}
+			h.RUnlock()
+			for receivingClient := range h.players {
+				receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
+			}
 		}
-		h.RUnlock()
-		for receivingClient := range h.players {
-			receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
