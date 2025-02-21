@@ -13,8 +13,8 @@ let mouseX = 0, mouseY = 0;
 const moveSpeed = 2;
 const clientGlobalPos = {x: 0, y: 0};
 const grid = drawGrid(clientX, clientY);
-const obstacles = two.makeGroup();
 const items = two.makeGroup();
+const obstacles = two.makeGroup();
 const players = two.makeGroup();
 const client = drawClient(clientX, clientY);
 const UI = drawUI();
@@ -25,9 +25,12 @@ socket.onmessage = (event) => {
     switch (Requesting) {
         case "setScene":
             const {Id: myId, X, Y, Obstacles, Items} = JSON.parse(event.data);
-            clientId = myId
+            console.log(myId);
+            if (myId) {
+                clientId = myId
+                Object.assign(clientGlobalPos, {x: X, y: Y});
+            }
             const mapData = {obstacles: Obstacles, items: Items};
-            Object.assign(clientGlobalPos, {x: X, y: Y});
             drawMap(mapData);
             break;
         case "update":

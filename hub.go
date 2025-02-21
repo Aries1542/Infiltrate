@@ -66,11 +66,6 @@ type updateRequest struct {
 	Interaction string
 }
 
-//type exampleJsonStruct struct {
-//	X        float32 `json:"x"`
-//	Y        float32 `json:"y"`
-//}
-
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
 	if err != nil {
@@ -143,17 +138,29 @@ func (h *Hub) run() {
 }
 
 func (h *Hub) updateClients() {
+	updateTicker := time.NewTicker(10 * time.Millisecond)
+	coinSpawnTicker := time.NewTicker(90 * time.Second)
 	for {
-		players := make([]player, 0)
-		h.RLock()
-		for client := range h.players {
-			players = append(players, h.players[client])
+		select {
+		case <-updateTicker.C:
+			players := make([]player, 0)
+			h.RLock()
+			for client := range h.players {
+				players = append(players, h.players[client])
+			}
+			h.RUnlock()
+			for receivingClient := range h.players {
+				receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
+			}
+		case <-coinSpawnTicker.C:
+			h.items = generateCoins()
+			for receivingClient := range h.players {
+				receivingClient.setScene <- setSceneResponse{
+					Requesting: "setScene",
+					Items:      h.items,
+				}
+			}
 		}
-		h.RUnlock()
-		for receivingClient := range h.players {
-			receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -174,7 +181,26 @@ func readObstacles() ([]obstacle, []item, error) {
 		log.Println(err)
 		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
 	}
+	mapData.Items = append(mapData.Items, generateCoins()...)
 	return mapData.Obstacles, mapData.Items, nil
+}
+
+func generateCoins() []item {
+	items := make([]item, 0)
+	id := 1
+	var x, y float32
+	for x = -1000; x < 1000; x += 200 {
+		for y = -1000; y < 1000; y += 200 {
+			items = append(items, item{
+				Id:   "coin" + strconv.Itoa(id),
+				Type: "coin",
+				X:    x,
+				Y:    y,
+			})
+			id++
+		}
+	}
+	return items
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {
