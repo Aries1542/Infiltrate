@@ -25,9 +25,12 @@ socket.onmessage = (event) => {
     switch (Requesting) {
         case "setScene":
             const {Id: myId, X, Y, Obstacles, Items} = JSON.parse(event.data);
-            clientId = myId
+            console.log(myId);
+            if (myId) {
+                clientId = myId
+                Object.assign(clientGlobalPos, {x: X, y: Y});
+            }
             const mapData = {obstacles: Obstacles, items: Items};
-            Object.assign(clientGlobalPos, {x: X, y: Y});
             drawMap(mapData);
             break;
         case "update":

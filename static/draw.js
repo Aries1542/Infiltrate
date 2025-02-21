@@ -102,14 +102,20 @@ const drawActor = (x, y, rotation, color) => {
 };
 
 const drawMap = (mapData) => {
-    globalToLocalCoords(mapData.obstacles);
-    globalToLocalCoords(mapData.items);
-    for (const obstacleData of mapData.obstacles) {
-        obstacles.add(drawObstacle(obstacleData));
+    if (mapData.obstacles) {
+        globalToLocalCoords(mapData.obstacles);
+        for (const obstacleData of mapData.obstacles) {
+            obstacles.add(drawObstacle(obstacleData));
+        }
     }
-    for (const itemData of mapData.items) {
-        items.add(drawItem(itemData))
+    if (mapData.items) {
+        items.remove(items.children);
+        globalToLocalCoords(mapData.items);
+        for (const itemData of mapData.items) {
+            items.add(drawItem(itemData))
+        }
     }
+
 }
 
 const drawObstacle = (obstacleData) => {
@@ -124,7 +130,12 @@ const drawObstacle = (obstacleData) => {
 const drawItem = (itemData) => {
     switch (itemData.Type) {
         case "coin":
-            return drawCoin(itemData)
+            if (!items.getById(itemData.id)){
+                itemData.X -= items.position.x;
+                itemData.Y -= items.position.y;
+                return drawCoin(itemData)
+            }
+            break;
         default:
             console.log("unknown item type " + itemData.Type + ", skipping draw");
     }

@@ -139,6 +139,7 @@ func (h *Hub) run() {
 
 func (h *Hub) updateClients() {
 	updateTicker := time.NewTicker(10 * time.Millisecond)
+	coinSpawnTicker := time.NewTicker(90 * time.Second)
 	for {
 		select {
 		case <-updateTicker.C:
@@ -150,6 +151,14 @@ func (h *Hub) updateClients() {
 			h.RUnlock()
 			for receivingClient := range h.players {
 				receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
+			}
+		case <-coinSpawnTicker.C:
+			h.items = generateCoins()
+			for receivingClient := range h.players {
+				receivingClient.setScene <- setSceneResponse{
+					Requesting: "setScene",
+					Items:      h.items,
+				}
 			}
 		}
 	}
@@ -180,10 +189,10 @@ func generateCoins() []item {
 	items := make([]item, 0)
 	id := 1
 	var x, y float32
-	for x = -2000; x < 2000; x += 100 {
-		for y = -2000; y < 2000; y += 100 {
+	for x = -1000; x < 1000; x += 200 {
+		for y = -1000; y < 1000; y += 200 {
 			items = append(items, item{
-				Id:   "player" + strconv.Itoa(id),
+				Id:   "coin" + strconv.Itoa(id),
 				Type: "coin",
 				X:    x,
 				Y:    y,
