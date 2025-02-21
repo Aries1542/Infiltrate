@@ -66,11 +66,6 @@ type updateRequest struct {
 	Interaction string
 }
 
-//type exampleJsonStruct struct {
-//	X        float32 `json:"x"`
-//	Y        float32 `json:"y"`
-//}
-
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
 	if err != nil {
@@ -177,7 +172,26 @@ func readObstacles() ([]obstacle, []item, error) {
 		log.Println(err)
 		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
 	}
+	mapData.Items = append(mapData.Items, generateCoins()...)
 	return mapData.Obstacles, mapData.Items, nil
+}
+
+func generateCoins() []item {
+	items := make([]item, 0)
+	id := 1
+	var x, y float32
+	for x = -2000; x < 2000; x += 100 {
+		for y = -2000; y < 2000; y += 100 {
+			items = append(items, item{
+				Id:   "player" + strconv.Itoa(id),
+				Type: "coin",
+				X:    x,
+				Y:    y,
+			})
+			id++
+		}
+	}
+	return items
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {
