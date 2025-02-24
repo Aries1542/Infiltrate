@@ -20,10 +20,10 @@ const game = {
     players: two.makeGroup(),
     client: drawClient(clientX, clientY),
     ui: drawUI(),
-    socket: new WebSocket("/ws"),
+    socket: null,
 }
 
-game.socket.onmessage = (event) => {
+const handleMessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
@@ -56,12 +56,15 @@ game.socket.onmessage = (event) => {
     }
 };
 
-game.socket.onopen = () => {
+const onConnection = () => {
     console.log("Connected to server");
+    setInterval(update, 15);
 };
 
 const main = () => {
-    setInterval(update, 15);
+    game.socket = new WebSocket("/ws");
+    game.socket.onopen = onConnection;
+    game.socket.onmessage = handleMessage;
 };
 
 window.addEventListener("resize", function(){
