@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -39,13 +41,21 @@ type removeResponse struct {
 // fromClient pumps messages from the websocket connection to the hub.
 func (c *Client) fromClient() {
 	defer func() {
-		c.conn.Close()
+		err := c.conn.Close()
+		if err != nil && !errors.Is(err, net.ErrClosed) {
+			log.Println("ws connection unable to close:", err)
+		} else if errors.Is(err, net.ErrClosed) {
+			log.Println("client disconnected")
+		}
 	}()
 	for {
 		_, message, err := c.conn.ReadMessage()
+		var closeError *websocket.CloseError
 		if err != nil {
-			log.Println("fromClient(), ReadMessage()", err)
-			break
+			if !errors.As(err, &closeError) {
+				log.Println("error reading msg from client:", err)
+			}
+			return
 		}
 		requesting := struct {
 			Requesting string
@@ -60,7 +70,7 @@ func (c *Client) fromClient() {
 			request := updateRequest{client: c}
 			err = json.Unmarshal(message, &request)
 			if err != nil {
-				log.Println("fromClient(), json.Unmarshal(&request)", err)
+				log.Println("error unmarshalling request:", err)
 				break
 			}
 			c.hub.update <- request
@@ -70,40 +80,50 @@ func (c *Client) fromClient() {
 
 func (c *Client) toClient() {
 	defer func() {
-		c.conn.Close()
 		c.hub.leave <- c
+		err := c.conn.Close()
+		if err != nil && !errors.Is(err, net.ErrClosed) {
+			log.Println("ws connection unable to close:", err)
+		} else if errors.Is(err, net.ErrClosed) {
+			log.Println("client disconnected")
+		}
 	}()
 	for {
 		select {
 		case response := <-c.setScene:
-			log.Println("setScene response outgoing", response)
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
-				log.Println("toClient(), json.Marshal()", err)
+				log.Println("error marshaling response:", err)
 			}
 			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
 			if err != nil {
-				log.Println("toClient(), WriteMessage()", err)
+				if err.Error() != "websocket: close sent" {
+					log.Println("msg to client failed:", err)
+				}
 				return
 			}
 		case response := <-c.update:
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
-				log.Println("toClient(), json.Marshal()", err)
+				log.Println("error marshaling response:", err)
 			}
 			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
 			if err != nil {
-				log.Println("toClient(), WriteMessage()", err)
+				if err.Error() != "websocket: close sent" {
+					log.Println("msg to client failed:", err)
+				}
 				return
 			}
 		case response := <-c.remove:
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
-				log.Println("toClient(), json.Marshal()", err)
+				log.Println("error marshaling response: ", err)
 			}
 			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
 			if err != nil {
-				log.Println("toClient(), WriteMessage()", err)
+				if err.Error() != "websocket: close sent" {
+					log.Println("msg to client failed:", err)
+				}
 				return
 			}
 		}
