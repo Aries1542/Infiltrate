@@ -9,7 +9,7 @@ const updateScoreboard = (playerData) => {
         if (p2.Score !== p1.Score) return p2.Score - p1.Score;
         return (p1.Username.toLowerCase() > p2.Username.toLowerCase()) ? 1:-1;
     })
-    const scoreboard = UI.getById("scoreboard")
+    const scoreboard = game.ui.getById("scoreboard")
     for (let i = 0; i < playerScores.length; i++) {
         const player = playerScores[i];
         scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.Username+": "+player.Score;
@@ -64,16 +64,16 @@ const drawClient = (x, y) => {
 
 const updatePlayers = (playersData) => {
     for (const player of playersData) {
-        if (player.Id === '' || player.Id === clientId) {
+        if (player.Id === '' || player.Id === game.clientId) {
             continue;
         }
-        if (players.getById(player.Id) === null) {
+        if (game.players.getById(player.Id) === null) {
             let newPlayer = drawPlayer(player.X, player.Y, player.Rotation, player.Id)
-            players.add(newPlayer);
+            game.players.add(newPlayer);
             continue;
         }
-        players.getById(player.Id).position.set(player.X, player.Y);
-        players.getById(player.Id).rotation = player.Rotation;
+        game.players.getById(player.Id).position.set(player.X, player.Y);
+        game.players.getById(player.Id).rotation = player.Rotation;
     }
 };
 
@@ -105,17 +105,16 @@ const drawMap = (mapData) => {
     if (mapData.obstacles) {
         globalToLocalCoords(mapData.obstacles);
         for (const obstacleData of mapData.obstacles) {
-            obstacles.add(drawObstacle(obstacleData));
+            game.obstacles.add(drawObstacle(obstacleData));
         }
     }
     if (mapData.items) {
-        items.remove(items.children);
+        game.items.remove(game.items.children);
         globalToLocalCoords(mapData.items);
         for (const itemData of mapData.items) {
-            items.add(drawItem(itemData))
+            game.items.add(drawItem(itemData))
         }
     }
-
 }
 
 const drawObstacle = (obstacleData) => {
@@ -130,9 +129,9 @@ const drawObstacle = (obstacleData) => {
 const drawItem = (itemData) => {
     switch (itemData.Type) {
         case "coin":
-            if (!items.getById(itemData.id)){
-                itemData.X -= items.position.x;
-                itemData.Y -= items.position.y;
+            if (!game.items.getById(itemData.id)){
+                itemData.X -= game.items.position.x;
+                itemData.Y -= game.items.position.y;
                 return drawCoin(itemData)
             }
             break;

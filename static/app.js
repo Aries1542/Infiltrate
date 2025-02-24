@@ -6,29 +6,32 @@ const elem = document.body;
 const two = new Two(params).appendTo(elem); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
 
-let clientId = "";
 let clientX = .5 * two.width;
 let clientY = .5 * two.height;
-let mouseX = 0, mouseY = 0;
-const moveSpeed = 2;
-const clientGlobalPos = {x: 0, y: 0};
-const grid = drawGrid(clientX, clientY);
-const items = two.makeGroup();
-const obstacles = two.makeGroup();
-const players = two.makeGroup();
-const client = drawClient(clientX, clientY);
-const UI = drawUI();
 
-const socket = new WebSocket("/ws");
-socket.onmessage = (event) => {
+const game = {
+    clientId: "",
+    mouse: {x: 0, y: 0},
+    moveSpeed: 2,
+    clientGlobalPos: {x: 0, y: 0},
+    grid: drawGrid(clientX, clientY),
+    items: two.makeGroup(),
+    obstacles: two.makeGroup(),
+    players: two.makeGroup(),
+    client: drawClient(clientX, clientY),
+    ui: drawUI(),
+    socket: new WebSocket("/ws"),
+}
+
+game.socket.onmessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
             const {Id: myId, X, Y, Obstacles, Items} = JSON.parse(event.data);
             console.log(myId);
             if (myId) {
-                clientId = myId
-                Object.assign(clientGlobalPos, {x: X, y: Y});
+                game.clientId = myId
+                Object.assign(game.clientGlobalPos, {x: X, y: Y});
             }
             const mapData = {obstacles: Obstacles, items: Items};
             drawMap(mapData);
@@ -43,17 +46,17 @@ socket.onmessage = (event) => {
             const {Type, Id: removeId} = JSON.parse(event.data);
             switch (Type) {
                 case "player":
-                    players.getById(removeId).remove();
+                    game.players.getById(removeId).remove();
                     break;
                 case "item":
-                    items.getById(removeId).remove();
+                    game.items.getById(removeId).remove();
                     break;
             }
             break;
     }
 };
 
-socket.onopen = () => {
+game.socket.onopen = () => {
     console.log("Connected to server");
 };
 
@@ -64,7 +67,7 @@ const main = () => {
 window.addEventListener("resize", function(){
     clientX = .5 * two.width;
     clientY = .5 * two.height;
-    Object.assign(client.position, {x: clientX, y: clientY});
+    Object.assign(game.client.position, {x: clientX, y: clientY});
 });
 
 const keysDown = {
@@ -77,8 +80,7 @@ onkeydown = onkeyup = (event) => {
     keysDown[event.code] = (event.type === "keydown");
 };
 onmousemove = (event) => {
-    mouseX = event.x;
-    mouseY = event.y;
+    Object.assign(game.mouse, {x: event.x, y: event.y});
 };
 
 const getKeyInput = () => {
@@ -104,23 +106,23 @@ const getKeyInput = () => {
 
 const update = () => {
     let delta = getKeyInput();
-    delta.x *= moveSpeed; delta.y *= moveSpeed;
+    delta.x *= game.moveSpeed; delta.y *= game.moveSpeed;
     collideDelta(delta);
-    grid.position.subtract(delta);
-    obstacles.position.subtract(delta);
-    items.position.subtract(delta);
-    clientGlobalPos.x += delta.x;
-    clientGlobalPos.y += delta.y;
-    client.rotation = Math.atan2(mouseY - clientY, mouseX - clientX) + .5*Math.PI;
+    game.grid.position.subtract(delta);
+    game.obstacles.position.subtract(delta);
+    game.items.position.subtract(delta);
+    game.clientGlobalPos.x += delta.x;
+    game.clientGlobalPos.y += delta.y;
+    game.client.rotation = Math.atan2(game.mouse.y - clientY, game.mouse.x - clientX) + .5*Math.PI;
 
     const id = updateItems();
 
-    if (socket.readyState !== socket.OPEN) return;
-    socket.send(JSON.stringify({
+    if (game.socket.readyState !== game.socket.OPEN) return;
+    game.socket.send(JSON.stringify({
         Requesting: "update",
-        X: clientGlobalPos.x,
-        Y: clientGlobalPos.y,
-        Rotation: client.rotation,
+        X: game.clientGlobalPos.x,
+        Y: game.clientGlobalPos.y,
+        Rotation: game.client.rotation,
         Interaction: id,
     }));
 };
@@ -129,26 +131,26 @@ const collideDelta = (delta) => {
     const clientR = 25
     const nextX = clientX + delta.x;
     const nextY = clientY + delta.y;
-    for (let obstacle of obstacles.children) {
-        const obstacleX = obstacle.position.x + obstacles.position.x;
-        const obstacleY = obstacle.position.y + obstacles.position.y;
+    for (let obstacle of game.obstacles.children) {
+        const obstacleX = obstacle.position.x + game.obstacles.position.x;
+        const obstacleY = obstacle.position.y + game.obstacles.position.y;
         const distX = Math.abs(clientX - obstacleX);
         const distY = Math.abs(clientY - obstacleY);
         const nextDistX = Math.abs(nextX - obstacleX);
         const nextDistY = Math.abs(nextY - obstacleY);
 
         if ((distY < ((obstacle.height*.5)+clientR)) && (nextDistX <= (obstacle.width*.5)+clientR)) { // collision on x-axis
-            delta.x = (distX - ((obstacle.width*.5)+clientR))*(delta.x/moveSpeed);
+            delta.x = (distX - ((obstacle.width*.5)+clientR))*(delta.x/game.moveSpeed);
         }
         if ((distX < ((obstacle.width*.5)+clientR)) && (nextDistY <= ((obstacle.height*.5)+clientR))) { // collision on y-axis
-            delta.y = (distY - ((obstacle.height*.5)+clientR))*(delta.y/moveSpeed);
+            delta.y = (distY - ((obstacle.height*.5)+clientR))*(delta.y/game.moveSpeed);
         }
     }
     return delta
 }
 
 const updateItems = () => {
-    for (const item of items.children) {
+    for (const item of game.items.children) {
         switch (item.type) {
             case "coin":
                 const id = updateCoin(item);
@@ -164,8 +166,8 @@ const updateItems = () => {
 const updateCoin = (coin) => {
     const clientR = 25
     const coinR = 10
-    const coinX = coin.position.x + items.position.x
-    const coinY = coin.position.y + items.position.y
+    const coinX = coin.position.x + game.items.position.x
+    const coinY = coin.position.y + game.items.position.y
     const centerDistSq = (clientX - coinX)**2 + (clientY - coinY)**2
     if (centerDistSq < (clientR+coinR)**2) {
         return coin.id;
@@ -178,8 +180,8 @@ const updateCoin = (coin) => {
 // Or at least work for single objects as well
 const globalToLocalCoords = (data) => {
     for (const datum of data) {
-        datum.X = clientX + (datum.X - clientGlobalPos.x);
-        datum.Y = clientY + (datum.Y - clientGlobalPos.y);
+        datum.X = clientX + (datum.X - game.clientGlobalPos.x);
+        datum.Y = clientY + (datum.Y - game.clientGlobalPos.y);
     }
 };
 
