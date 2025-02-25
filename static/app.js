@@ -77,8 +77,11 @@ const startGame = (username) => {
 }
 
 const onClickPlay = () => {
-    const username = document.getElementById("username-field").value;
-    if (username === "" || username.length >= 15) {
+    const username = document.getElementById("username-field").value.trim() || "";
+    if (username === "" || username.length > 15) {
+        const error = document.getElementById("error");
+        error.innerHTML = "Sorry, you must input a username between 1 and 15 characters";
+        error.style.display = "block";
         return;
     }
     document.getElementById("main-menu").remove();
