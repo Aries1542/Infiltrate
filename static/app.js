@@ -1,9 +1,7 @@
 const params = {
-    fullscreen: true, 
-    autostart: true
+    fullscreen: true
 };
-const elem = document.body;
-const two = new Two(params).appendTo(elem); // Base class used for all drawing
+const two = new Two(params); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
 
 let clientX = .5 * two.width;
@@ -14,12 +12,12 @@ const game = {
     mouse: {x: 0, y: 0},
     moveSpeed: 2,
     clientGlobalPos: {x: 0, y: 0},
-    grid: drawGrid(clientX, clientY),
-    items: two.makeGroup(),
-    obstacles: two.makeGroup(),
-    players: two.makeGroup(),
-    client: drawClient(clientX, clientY),
-    ui: drawUI(),
+    grid: null,
+    items: null,
+    obstacles: null,
+    players: null,
+    client: null,
+    ui: null,
     socket: null,
 }
 
@@ -59,12 +57,27 @@ const handleMessage = (event) => {
 const onConnection = () => {
     console.log("Connected to server");
     setInterval(update, 15);
+    two.play();
 };
 
-const main = () => {
+const joinServer = (username) => {
+    two.appendTo(document.body)
+
+    game.grid = drawGrid(clientX, clientY)
+    game.items = two.makeGroup()
+    game.obstacles = two.makeGroup()
+    game.players = two.makeGroup()
+    game.client = drawClient(clientX, clientY)
+    game.ui = drawUI()
+
     game.socket = new WebSocket("/ws");
     game.socket.onopen = onConnection;
     game.socket.onmessage = handleMessage;
+
+}
+
+const main = () => {
+    // joinServer("abc")
 };
 
 window.addEventListener("resize", function(){

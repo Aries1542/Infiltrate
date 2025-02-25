@@ -2,9 +2,71 @@
 <head>
     <title>Infiltrate</title>
     <script src="two.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Roboto', sans-serif;
+        }
+        #main-menu {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-direction: column;
+            gap: 10px;
+
+            background-color: #333;
+        }
+        #title {
+            color: #18e;
+            font-size: 56pt;
+            font-weight: bold;
+            margin-bottom: 10%;
+        }
+        label {
+            color: #18e;
+            font-size: 18pt;
+        }
+        #username-field {
+            font-size: 20pt;
+
+            border-radius: 10px;
+            border: black 5px solid;
+
+            color: #fff;
+            background-color: #555;
+        }
+        #play-button {
+            font-size: 24pt;
+            width: 20%;
+            height: 15%;
+            border-radius: 20px;
+            border: black 10px solid;
+
+            color: #fff;
+            background-color: #555;
+        }
+        #play-button:hover {
+            color: #18e;
+            background-color: #444;
+        }
+        #play-button:active {
+            color: #4cf;
+            background-color: #000;
+        }
+    </style>
 </head>
 
 <body>
+    <div id="main-menu">
+        <h1 id="title">Infiltrate</h1>
+        <label for="username-field">Enter your username: </label>
+        <input type="text" id="username-field" placeholder="Username">
+        <button id="play-button">Play!</button>
+    </div>
     <script src="draw.js"></script>
     <script src="app.js"></script>
 </body>
