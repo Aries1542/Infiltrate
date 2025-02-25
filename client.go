@@ -20,6 +20,7 @@ type Client struct {
 	remove   chan removeResponse
 }
 
+type response interface{}
 type setSceneResponse struct {
 	Requesting string
 	Id         string
@@ -90,43 +91,27 @@ func (c *Client) toClient() {
 	}()
 	for {
 		select {
-		case response := <-c.setScene:
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("error marshaling response:", err)
-			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
-		case response := <-c.update:
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("error marshaling response:", err)
-			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
-		case response := <-c.remove:
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("error marshaling response: ", err)
-			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
+		case message := <-c.setScene:
+			c.sendMessage(message)
+		case message := <-c.update:
+			c.sendMessage(message)
+		case message := <-c.remove:
+			c.sendMessage(message)
 		}
+	}
+}
+
+func (c *Client) sendMessage(message response) {
+	jsonMessage, err := json.Marshal(message)
+	if err != nil {
+		log.Println("error marshaling response: ", err)
+	}
+	err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
+	if err != nil {
+		if err.Error() != "websocket: close sent" {
+			log.Println("msg to client failed:", err)
+		}
+		return
 	}
 }
 
