@@ -1,9 +1,7 @@
 const params = {
-    fullscreen: true, 
-    autostart: true
+    fullscreen: true
 };
-const elem = document.body;
-const two = new Two(params).appendTo(elem); // Base class used for all drawing
+const two = new Two(params); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
 
 let clientX = .5 * two.width;
@@ -14,16 +12,16 @@ const game = {
     mouse: {x: 0, y: 0},
     moveSpeed: 2,
     clientGlobalPos: {x: 0, y: 0},
-    grid: drawGrid(clientX, clientY),
-    items: two.makeGroup(),
-    obstacles: two.makeGroup(),
-    players: two.makeGroup(),
-    client: drawClient(clientX, clientY),
-    ui: drawUI(),
-    socket: new WebSocket("/ws"),
+    grid: null,
+    items: null,
+    obstacles: null,
+    players: null,
+    client: null,
+    ui: null,
+    socket: null,
 }
 
-game.socket.onmessage = (event) => {
+const handleMessage = (event) => {
     const {Requesting} = JSON.parse(event.data);
     switch (Requesting) {
         case "setScene":
@@ -56,12 +54,42 @@ game.socket.onmessage = (event) => {
     }
 };
 
-game.socket.onopen = () => {
+const onConnection = () => {
     console.log("Connected to server");
+    setInterval(update, 15);
+    two.play();
 };
 
+const startGame = (username) => {
+    two.appendTo(document.body)
+
+    game.grid = drawGrid(clientX, clientY)
+    game.items = two.makeGroup()
+    game.obstacles = two.makeGroup()
+    game.players = two.makeGroup()
+    game.client = drawClient(clientX, clientY)
+    game.ui = drawUI()
+
+    game.socket = new WebSocket("/ws?username=" + username);
+    game.socket.onopen = onConnection;
+    game.socket.onmessage = handleMessage;
+
+}
+
+const onClickPlay = () => {
+    const username = document.getElementById("username-field").value.trim() || "";
+    if (username === "" || username.length > 15) {
+        const error = document.getElementById("error");
+        error.innerHTML = "Sorry, you must input a username between 1 and 15 characters";
+        error.style.display = "block";
+        return;
+    }
+    document.getElementById("main-menu").remove();
+    startGame(username);
+}
+
 const main = () => {
-    setInterval(update, 15);
+    document.getElementById("play-button").onclick = onClickPlay;
 };
 
 window.addEventListener("resize", function(){
