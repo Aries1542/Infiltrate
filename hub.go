@@ -111,7 +111,9 @@ func (h *Hub) run() {
 
 		case leavingClient := <-h.leave:
 			leavingClientId := h.players[leavingClient].Id
+			h.Lock()
 			delete(h.players, leavingClient)
+			h.Unlock()
 			close(leavingClient.setScene)
 			close(leavingClient.update)
 			close(leavingClient.remove)
@@ -149,18 +151,22 @@ func (h *Hub) updateClients() {
 			for client := range h.players {
 				players = append(players, h.players[client])
 			}
-			h.RUnlock()
 			for receivingClient := range h.players {
 				receivingClient.update <- updateResponse{Requesting: "update", PlayersData: players}
 			}
+			h.RUnlock()
 		case <-coinSpawnTicker.C:
+			h.Lock()
 			h.items = generateCoins()
+			h.Unlock()
+			h.RLock()
 			for receivingClient := range h.players {
 				receivingClient.setScene <- setSceneResponse{
 					Requesting: "setScene",
 					Items:      h.items,
 				}
 			}
+			h.RUnlock()
 		}
 	}
 }
@@ -206,12 +212,14 @@ func generateCoins() []item {
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {
 	interacted := -1
+	h.RLock()
 	for itemIndex := range h.items {
 		if h.items[itemIndex].Id == interactionId {
 			interacted = itemIndex
 			break
 		}
 	}
+	h.RUnlock()
 	if interacted == -1 {
 		log.Println("interaction requested with invalid id: ", interactionId)
 		return
