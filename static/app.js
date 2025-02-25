@@ -70,7 +70,7 @@ const startGame = (username) => {
     game.client = drawClient(clientX, clientY)
     game.ui = drawUI()
 
-    game.socket = new WebSocket("/ws");
+    game.socket = new WebSocket("/ws?username=" + username);
     game.socket.onopen = onConnection;
     game.socket.onmessage = handleMessage;
 

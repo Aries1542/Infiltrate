@@ -131,6 +131,8 @@ func (c *Client) toClient() {
 }
 
 func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	requestedUsername := r.URL.Query().Get("username")
+	log.Println(requestedUsername, "has joined")
 	conn, err := upgrader.Upgrade(w, r, nil) // upgrade the connection to a websocket connection
 	if err != nil {
 		log.Print("upgrade failed: ", err)
@@ -143,7 +145,7 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		update:   make(chan updateResponse),
 		remove:   make(chan removeResponse),
 	}
-	request := joinRequest{client: client}
+	request := joinRequest{client: client, username: requestedUsername}
 	client.hub.join <- request
 
 	go client.toClient()

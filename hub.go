@@ -56,7 +56,8 @@ type item struct {
 }
 
 type joinRequest struct {
-	client *Client
+	client   *Client
+	username string
 }
 type updateRequest struct {
 	client      *Client
@@ -90,7 +91,7 @@ func (h *Hub) run() {
 			client := request.client
 			h.players[client] = player{
 				Id:       "player" + strconv.Itoa(h.nextID),
-				Username: "player" + strconv.Itoa(h.nextID),
+				Username: request.username,
 				X:        0,
 				Y:        0,
 				Rotation: 0,
