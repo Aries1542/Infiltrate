@@ -90,28 +90,20 @@ func (c *Client) toClient() {
 	for {
 		select {
 		case message := <-c.respond:
-			err := c.sendMessage(message)
+			jsonMessage, err := json.Marshal(message)
 			if err != nil {
+				log.Println("error marshaling response: ", err)
+				break
+			}
+			err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
+			if err != nil {
+				if err.Error() != "websocket: close sent" {
+					log.Println("msg to client failed:", err)
+				}
 				return
 			}
 		}
 	}
-}
-
-func (c *Client) sendMessage(message response) error {
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		log.Println("error marshaling response: ", err)
-		return err
-	}
-	err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
-	if err != nil {
-		if err.Error() != "websocket: close sent" {
-			log.Println("msg to client failed:", err)
-		}
-		return err
-	}
-	return nil
 }
 
 func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
