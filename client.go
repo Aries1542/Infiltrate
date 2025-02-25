@@ -13,11 +13,9 @@ import (
 var upgrader = websocket.Upgrader{}
 
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	setScene chan setSceneResponse
-	update   chan updateResponse
-	remove   chan removeResponse
+	hub     *Hub
+	conn    *websocket.Conn
+	respond chan response
 }
 
 type response interface{}
@@ -91,11 +89,7 @@ func (c *Client) toClient() {
 	}()
 	for {
 		select {
-		case message := <-c.setScene:
-			c.sendMessage(message)
-		case message := <-c.update:
-			c.sendMessage(message)
-		case message := <-c.remove:
+		case message := <-c.respond:
 			c.sendMessage(message)
 		}
 	}
@@ -124,11 +118,9 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		hub:      hub,
-		conn:     conn,
-		setScene: make(chan setSceneResponse),
-		update:   make(chan updateResponse),
-		remove:   make(chan removeResponse),
+		hub:     hub,
+		conn:    conn,
+		respond: make(chan response),
 	}
 	request := joinRequest{client: client, username: requestedUsername}
 	client.hub.join <- request
