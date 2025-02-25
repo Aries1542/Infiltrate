@@ -60,7 +60,7 @@ const onConnection = () => {
     two.play();
 };
 
-const joinServer = (username) => {
+const startGame = (username) => {
     two.appendTo(document.body)
 
     game.grid = drawGrid(clientX, clientY)
@@ -76,8 +76,17 @@ const joinServer = (username) => {
 
 }
 
+const onClickPlay = () => {
+    const username = document.getElementById("username-field").value;
+    if (username === "" || username.length >= 15) {
+        return;
+    }
+    document.getElementById("main-menu").remove();
+    startGame(username);
+}
+
 const main = () => {
-    // joinServer("abc")
+    document.getElementById("play-button").onclick = onClickPlay;
 };
 
 window.addEventListener("resize", function(){
