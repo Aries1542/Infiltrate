@@ -13,13 +13,12 @@ import (
 var upgrader = websocket.Upgrader{}
 
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	setScene chan setSceneResponse
-	update   chan updateResponse
-	remove   chan removeResponse
+	hub     *Hub
+	conn    *websocket.Conn
+	respond chan response
 }
 
+type response interface{}
 type setSceneResponse struct {
 	Requesting string
 	Id         string
@@ -90,36 +89,13 @@ func (c *Client) toClient() {
 	}()
 	for {
 		select {
-		case response := <-c.setScene:
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("error marshaling response:", err)
-			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
-		case response := <-c.update:
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("error marshaling response:", err)
-			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
-		case response := <-c.remove:
-			jsonResponse, err := json.Marshal(response)
+		case message := <-c.respond:
+			jsonMessage, err := json.Marshal(message)
 			if err != nil {
 				log.Println("error marshaling response: ", err)
+				break
 			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonResponse)
+			err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
 			if err != nil {
 				if err.Error() != "websocket: close sent" {
 					log.Println("msg to client failed:", err)
@@ -139,11 +115,9 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		hub:      hub,
-		conn:     conn,
-		setScene: make(chan setSceneResponse),
-		update:   make(chan updateResponse),
-		remove:   make(chan removeResponse),
+		hub:     hub,
+		conn:    conn,
+		respond: make(chan response),
 	}
 	request := joinRequest{client: client, username: requestedUsername}
 	client.hub.join <- request
