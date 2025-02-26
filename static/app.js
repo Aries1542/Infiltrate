@@ -35,7 +35,7 @@ const handleMessage = (event) => {
             break;
         case "update":
             const {players} = JSON.parse(event.data);
-            globalToLocalCoords(players);
+            globalToLocalCoords(players, game.players);
             updatePlayers(players);
             updateScoreboard(players);
             break;
@@ -202,13 +202,11 @@ const updateCoin = (coin) => {
     return null
 }
 
-// Takes a List of data and converts x and y for each item to local coordinates
-// Note: Needs to be refactored later to recurse through any data structure
-// Or at least work for single objects as well
-const globalToLocalCoords = (data) => {
+// Takes a list of data and intended parent and converts x and y for each item to local coordinates
+const globalToLocalCoords = (data, parent) => {
     for (const datum of data) {
-        datum.x = clientX + (datum.x - game.clientGlobalPos.x);
-        datum.y = clientY + (datum.y - game.clientGlobalPos.y);
+        datum.x = clientX + ((datum.x + parent.position.x) - game.clientGlobalPos.x);
+        datum.y = clientY + ((datum.y + parent.position.y) - game.clientGlobalPos.y);
     }
 };
 

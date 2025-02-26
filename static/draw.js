@@ -103,14 +103,14 @@ const drawActor = (x, y, rotation, color) => {
 
 const drawMap = (obstacles, items) => {
     if (obstacles) {
-        globalToLocalCoords(obstacles);
+        globalToLocalCoords(obstacles, game.obstacles);
         for (const obstacle of obstacles) {
             game.obstacles.add(drawObstacle(obstacle));
         }
     }
     if (items) {
         game.items.remove(game.items.children);
-        globalToLocalCoords(items);
+        globalToLocalCoords(items, game.items);
         for (const item of items) {
             game.items.add(drawItem(item))
         }
@@ -126,17 +126,15 @@ const drawObstacle = (obstacleData) => {
     return obstacle;
 }
 
-const drawItem = (itemData) => {
-    switch (itemData.type) {
+const drawItem = (item) => {
+    switch (item.type) {
         case "coin":
-            if (!game.items.getById(itemData.id)){
-                itemData.x -= game.items.position.x;
-                itemData.y -= game.items.position.y;
-                return drawCoin(itemData)
+            if (!game.items.getById(item.id)){
+                return drawCoin(item)
             }
             break;
         default:
-            console.log("unknown item type " + itemData.type + ", skipping draw");
+            console.log("unknown item type " + item.type + ", skipping draw");
     }
 }
 
