@@ -13,28 +13,71 @@ import (
 var upgrader = websocket.Upgrader{}
 
 type Client struct {
-	hub     *Hub
-	conn    *websocket.Conn
-	respond chan response
+	hub      *Hub
+	conn     *websocket.Conn
+	outgoing chan response
 }
 
-type response interface{}
-type setSceneResponse struct {
-	Requesting string
-	Id         string
-	X          float32
-	Y          float32
-	Obstacles  []obstacle
-	Items      []item
+type response interface {
+	JSONFormat() ([]byte, error)
 }
+
+type setSceneResponse struct {
+	Player    player
+	Obstacles []obstacle
+	Items     []item
+}
+
+func (response setSceneResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting string
+		Id         string
+		X          float32
+		Y          float32
+		Obstacles  []obstacle
+		Items      []item
+	}{
+		Requesting: "setScene",
+		Id:         response.Player.Id,
+		X:          response.Player.X,
+		Y:          response.Player.Y,
+		Obstacles:  response.Obstacles,
+		Items:      response.Items,
+	})
+	return jsonMessage, err
+}
+
 type updateResponse struct {
-	Requesting  string
 	PlayersData []player
 }
+
+func (response updateResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting  string
+		PlayersData []player
+	}{
+		Requesting:  "update",
+		PlayersData: response.PlayersData,
+	})
+	return jsonMessage, err
+}
+
 type removeResponse struct {
-	Requesting string
-	Type       string
-	Id         string
+	Type string
+	Id   string
+}
+
+func (response removeResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting string
+		Type       string
+		Id         string
+	}{
+		Requesting: "remove",
+		Type:       response.Type,
+		Id:         response.Id,
+	})
+	return jsonMessage, err
 }
 
 // fromClient pumps messages from the websocket connection to the hub.
@@ -66,20 +109,20 @@ func (c *Client) fromClient() {
 		}
 		switch requesting.Requesting {
 		case "update":
-			request := updateRequest{client: c}
-			err = json.Unmarshal(message, &request)
+			updating := updateRequest{client: c}
+			err = json.Unmarshal(message, &updating)
 			if err != nil {
 				log.Println("error unmarshalling request:", err)
 				break
 			}
-			c.hub.update <- request
+			c.hub.incoming <- updating
 		}
 	}
 }
 
 func (c *Client) toClient() {
 	defer func() {
-		c.hub.leave <- c
+		c.hub.incoming <- leaveRequest{client: c}
 		err := c.conn.Close()
 		if err != nil && !errors.Is(err, net.ErrClosed) {
 			log.Println("ws connection unable to close:", err)
@@ -88,11 +131,11 @@ func (c *Client) toClient() {
 		}
 	}()
 	for {
-		message := <-c.respond
-		jsonMessage, err := json.Marshal(message)
+		message := <-c.outgoing
+		jsonMessage, err := message.JSONFormat()
 		if err != nil {
 			log.Println("error marshaling response: ", err)
-			break
+			continue
 		}
 		err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		if err != nil {
@@ -113,12 +156,11 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		hub:     hub,
-		conn:    conn,
-		respond: make(chan response),
+		hub:      hub,
+		conn:     conn,
+		outgoing: make(chan response),
 	}
-	request := joinRequest{client: client, username: requestedUsername}
-	client.hub.join <- request
+	client.hub.incoming <- joinRequest{client: client, username: requestedUsername}
 
 	go client.toClient()
 	go client.fromClient()
