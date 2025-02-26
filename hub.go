@@ -16,13 +16,11 @@ import (
 //	It will also continually send data to clients
 type Hub struct {
 	sync.RWMutex
-	join      chan joinRequest
-	leave     chan *Client
-	update    chan updateRequest
-	nextID    int
-	players   map[*Client]player
-	obstacles []obstacle
-	items     []item
+	requestChan chan request
+	nextID      int
+	players     map[*Client]player
+	obstacles   []obstacle
+	items       []item
 }
 
 // a player is representation of the data needed to draw one client to another's screen
@@ -55,10 +53,26 @@ type item struct {
 	Y    float32
 }
 
+type request interface {
+	Requesting() string
+}
 type joinRequest struct {
 	client   *Client
 	username string
 }
+
+func (joinRequest) Requesting() string {
+	return "join"
+}
+
+type leaveRequest struct {
+	client *Client
+}
+
+func (leaveRequest) Requesting() string {
+	return "leave"
+}
+
 type updateRequest struct {
 	client      *Client
 	X           float32
@@ -67,72 +81,79 @@ type updateRequest struct {
 	Interaction string
 }
 
+func (updateRequest) Requesting() string {
+	return "update"
+}
+
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
 	if err != nil {
 		log.Println(err)
 	}
 	return &Hub{
-		join:      make(chan joinRequest),
-		leave:     make(chan *Client),
-		update:    make(chan updateRequest),
-		nextID:    1,
-		players:   make(map[*Client]player),
-		obstacles: obstacles,
-		items:     items,
+		requestChan: make(chan request),
+		nextID:      1,
+		players:     make(map[*Client]player),
+		obstacles:   obstacles,
+		items:       items,
 	}
 }
 
 func (h *Hub) run() {
 	for {
-		select {
-		case request := <-h.join:
-			h.Lock()
-			client := request.client
-			h.players[client] = player{
-				Id:       "player" + strconv.Itoa(h.nextID),
-				Username: request.username,
-				X:        0,
-				Y:        0,
-				Rotation: 0,
-				Score:    0,
-			}
-			h.nextID++
-			h.Unlock()
+		message := <-h.requestChan
+		switch message.Requesting() {
+		case "join":
+			if joining, ok := message.(joinRequest); ok {
+				h.Lock()
+				client := joining.client
+				h.players[client] = player{
+					Id:       "player" + strconv.Itoa(h.nextID),
+					Username: joining.username,
+					X:        0,
+					Y:        0,
+					Rotation: 0,
+					Score:    0,
+				}
+				h.nextID++
+				h.Unlock()
 
-			client.respond <- setSceneResponse{
-				Requesting: "setScene",
-				Id:         h.players[client].Id,
-				X:          0,
-				Y:          0,
-				Obstacles:  h.obstacles,
-				Items:      h.items,
-			}
-
-		case leavingClient := <-h.leave:
-			leavingClientId := h.players[leavingClient].Id
-			h.Lock()
-			delete(h.players, leavingClient)
-			h.Unlock()
-			close(leavingClient.respond)
-			for client := range h.players {
-				client.respond <- removeResponse{
-					Requesting: "remove",
-					Type:       "player",
-					Id:         leavingClientId,
+				client.respond <- setSceneResponse{
+					Requesting: "setScene",
+					Id:         h.players[client].Id,
+					X:          0,
+					Y:          0,
+					Obstacles:  h.obstacles,
+					Items:      h.items,
 				}
 			}
-
-		case request := <-h.update:
-			h.Lock()
-			updatingPlayer := h.players[request.client]
-			updatingPlayer.X = request.X
-			updatingPlayer.Y = request.Y
-			updatingPlayer.Rotation = request.Rotation
-			h.players[request.client] = updatingPlayer
-			h.Unlock()
-			if request.Interaction != "" {
-				h.handleInteraction(request.Interaction, request.client)
+		case "leave":
+			if leaving, ok := message.(leaveRequest); ok {
+				leavingClientId := h.players[leaving.client].Id
+				h.Lock()
+				delete(h.players, leaving.client)
+				h.Unlock()
+				close(leaving.client.respond)
+				for client := range h.players {
+					client.respond <- removeResponse{
+						Requesting: "remove",
+						Type:       "player",
+						Id:         leavingClientId,
+					}
+				}
+			}
+		case "update":
+			if updating, ok := message.(updateRequest); ok {
+				h.Lock()
+				updatingPlayer := h.players[updating.client]
+				updatingPlayer.X = updating.X
+				updatingPlayer.Y = updating.Y
+				updatingPlayer.Rotation = updating.Rotation
+				h.players[updating.client] = updatingPlayer
+				h.Unlock()
+				if updating.Interaction != "" {
+					h.handleInteraction(updating.Interaction, updating.client)
+				}
 			}
 		}
 	}

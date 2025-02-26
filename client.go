@@ -66,20 +66,20 @@ func (c *Client) fromClient() {
 		}
 		switch requesting.Requesting {
 		case "update":
-			request := updateRequest{client: c}
-			err = json.Unmarshal(message, &request)
+			updating := updateRequest{client: c}
+			err = json.Unmarshal(message, &updating)
 			if err != nil {
 				log.Println("error unmarshalling request:", err)
 				break
 			}
-			c.hub.update <- request
+			c.hub.requestChan <- updating
 		}
 	}
 }
 
 func (c *Client) toClient() {
 	defer func() {
-		c.hub.leave <- c
+		c.hub.requestChan <- leaveRequest{client: c}
 		err := c.conn.Close()
 		if err != nil && !errors.Is(err, net.ErrClosed) {
 			log.Println("ws connection unable to close:", err)
@@ -117,8 +117,7 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn:    conn,
 		respond: make(chan response),
 	}
-	request := joinRequest{client: client, username: requestedUsername}
-	client.hub.join <- request
+	client.hub.requestChan <- joinRequest{client: client, username: requestedUsername}
 
 	go client.toClient()
 	go client.fromClient()
