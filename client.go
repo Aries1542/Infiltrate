@@ -31,16 +31,12 @@ type setSceneResponse struct {
 func (response setSceneResponse) JSONFormat() ([]byte, error) {
 	jsonMessage, err := json.Marshal(struct {
 		Requesting string     `json:"requesting"`
-		Id         string     `json:"id"`
-		X          float32    `json:"x"`
-		Y          float32    `json:"y"`
+		Player     player     `json:"player"`
 		Obstacles  []obstacle `json:"obstacles"`
 		Items      []item     `json:"items"`
 	}{
 		Requesting: "setScene",
-		Id:         response.Player.Id,
-		X:          response.Player.X,
-		Y:          response.Player.Y,
+		Player:     response.Player,
 		Obstacles:  response.Obstacles,
 		Items:      response.Items,
 	})

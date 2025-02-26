@@ -26,10 +26,10 @@ const handleMessage = (event) => {
     switch (requesting) {
         case "setScene":
             console.log(JSON.parse(event.data));
-            const {id: myId, x, y, obstacles, items} = JSON.parse(event.data);
-            if (myId) {
-                game.clientId = myId
-                Object.assign(game.clientGlobalPos, {x: x, y: y});
+            const {player, obstacles, items} = JSON.parse(event.data);
+            if (player.id) {
+                game.clientId = player.id;
+                Object.assign(game.clientGlobalPos, {x: player.x, y: player.y});
             }
             const mapData = {obstacles: obstacles, items: items};
             drawMap(mapData);
