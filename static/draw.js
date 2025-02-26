@@ -4,17 +4,17 @@ const drawUI = () => {
     return UI;
 }
 
-const updateScoreboard = (playerData) => {
-    const playerScores = playerData.toSorted((p1, p2) => {
-        if (p2.Score !== p1.Score) return p2.Score - p1.Score;
-        return (p1.Username.toLowerCase() > p2.Username.toLowerCase()) ? 1:-1;
+const updateScoreboard = (players) => {
+    players.sort((p1, p2) => {
+        if (p2.score !== p1.score) return p2.score - p1.score;
+        return (p1.username.toLowerCase() > p2.username.toLowerCase()) ? 1:-1;
     })
     const scoreboard = game.ui.getById("scoreboard")
-    for (let i = 0; i < playerScores.length; i++) {
-        const player = playerScores[i];
-        scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.Username+": "+player.Score;
+    for (let i = 0; i < players.length; i++) {
+        const player = players[i];
+        scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.username+": "+player.score;
     }
-    if (playerScores.length < 6) for (let i = playerScores.length; i < 5; i++) {
+    if (players.length < 6) for (let i = players.length; i < 5; i++) {
         scoreboard.getById("pos" + (i+1)).value = (i+1)+". -";
     }
 }
@@ -62,18 +62,18 @@ const drawClient = (x, y) => {
     return drawActor(x, y, 0, "#18e");
 };
 
-const updatePlayers = (playersData) => {
-    for (const player of playersData) {
-        if (player.Id === '' || player.Id === game.clientId) {
+const updatePlayers = (players) => {
+    for (const player of players) {
+        if (player.id === '' || player.id === game.clientId) {
             continue;
         }
-        if (game.players.getById(player.Id) === null) {
-            let newPlayer = drawPlayer(player.X, player.Y, player.Rotation, player.Id)
+        if (game.players.getById(player.id) === null) {
+            let newPlayer = drawPlayer(player.x, player.y, player.rotation, player.id)
             game.players.add(newPlayer);
             continue;
         }
-        game.players.getById(player.Id).position.set(player.X, player.Y);
-        game.players.getById(player.Id).rotation = player.Rotation;
+        game.players.getById(player.id).position.set(player.x, player.y);
+        game.players.getById(player.id).rotation = player.rotation;
     }
 };
 
@@ -111,41 +111,41 @@ const drawMap = (mapData) => {
     if (mapData.items) {
         game.items.remove(game.items.children);
         globalToLocalCoords(mapData.items);
-        for (const itemData of mapData.items) {
-            game.items.add(drawItem(itemData))
+        for (const item of mapData.items) {
+            game.items.add(drawItem(item))
         }
     }
 }
 
 const drawObstacle = (obstacleData) => {
-    const { X, Y, Width, Height, Color } = obstacleData;
-    const adjustedX = X + Width*.5, adjustedY = Y + Height*.5;
-    const obstacle = two.makeRectangle(adjustedX, adjustedY, Width, Height);
-    obstacle.fill = Color;
+    const { x, y, width, height, color } = obstacleData;
+    const adjustedX = x + width*.5, adjustedY = y + height*.5;
+    const obstacle = two.makeRectangle(adjustedX, adjustedY, width, height);
+    obstacle.fill = color;
     obstacle.noStroke();
     return obstacle;
 }
 
 const drawItem = (itemData) => {
-    switch (itemData.Type) {
+    switch (itemData.type) {
         case "coin":
             if (!game.items.getById(itemData.id)){
-                itemData.X -= game.items.position.x;
-                itemData.Y -= game.items.position.y;
+                itemData.x -= game.items.position.x;
+                itemData.y -= game.items.position.y;
                 return drawCoin(itemData)
             }
             break;
         default:
-            console.log("unknown item type " + itemData.Type + ", skipping draw");
+            console.log("unknown item type " + itemData.type + ", skipping draw");
     }
 }
 
-const drawCoin = (coinData) => {
-    const circle = two.makeCircle(coinData.X, coinData.Y, 10);
+const drawCoin = (coin) => {
+    const circle = two.makeCircle(coin.x, coin.y, 10);
     circle.fill = "#fe7";
     circle.stroke = "#ea2";
-    circle.type = coinData.Type;
-    circle.id = coinData.Id;
+    circle.type = coin.type;
+    circle.id = coin.id;
     return circle;
 }
 

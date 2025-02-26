@@ -24,32 +24,32 @@ type Hub struct {
 
 // a player is representation of the data needed to draw one client to another's screen
 type player struct {
-	Id       string
-	Username string
-	X        float32
-	Y        float32
-	Rotation float32
-	Score    int
+	Id       string  `json:"id"`
+	Username string  `json:"username"`
+	X        float32 `json:"x"`
+	Y        float32 `json:"y"`
+	Rotation float32 `json:"rotation"`
+	Score    int     `json:"score"`
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
 // X and Y represent the top-left corner of the object.
 // Anything not matching these should be made as an item.
 type obstacle struct {
-	X      float32
-	Y      float32
-	Width  float32
-	Height float32
-	Color  string
+	X      float32 `json:"x"`
+	Y      float32 `json:"y"`
+	Width  float32 `json:"width"`
+	Height float32 `json:"height"`
+	Color  string  `json:"color"`
 }
 
 // An item is anything that should be displayed and interacted with by the player, that does not fit as an obstacle.
 // The Type field is used to determine how to display and interact with the item.
 type item struct {
-	Id   string
-	Type string
-	X    float32
-	Y    float32
+	Id   string  `json:"id"`
+	Type string  `json:"type"`
+	X    float32 `json:"x"`
+	Y    float32 `json:"y"`
 }
 
 type request interface {
