@@ -25,7 +25,6 @@ const handleMessage = (event) => {
     const {requesting} = JSON.parse(event.data);
     switch (requesting) {
         case "setScene":
-            console.log(JSON.parse(event.data));
             const {player, obstacles, items} = JSON.parse(event.data);
             if (player.id) {
                 game.clientId = player.id;
@@ -43,10 +42,10 @@ const handleMessage = (event) => {
             const {type, id: removeId} = JSON.parse(event.data);
             switch (type) {
                 case "player":
-                    game.players.getById(removeId).remove();
+                    game.players.children.ids[removeId].remove();
                     break;
                 case "item":
-                    game.items.getById(removeId).remove();
+                    game.items.children.ids[removeId].remove();
                     break;
             }
             break;

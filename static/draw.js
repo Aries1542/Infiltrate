@@ -9,13 +9,13 @@ const updateScoreboard = (players) => {
         if (p2.score !== p1.score) return p2.score - p1.score;
         return (p1.username.toLowerCase() > p2.username.toLowerCase()) ? 1:-1;
     })
-    const scoreboard = game.ui.getById("scoreboard")
+    const scoreboard = game.ui.children.ids['scoreboard']
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
-        scoreboard.getById("pos" + (i + 1)).value = (i+1)+". "+player.username+": "+player.score;
+        scoreboard.children.ids["pos" + (i + 1)].value = (i+1)+". "+player.username+": "+player.score;
     }
     if (players.length < 6) for (let i = players.length; i < 5; i++) {
-        scoreboard.getById("pos" + (i+1)).value = (i+1)+". -";
+        scoreboard.children.ids["pos" + (i+1)].value = (i+1)+". -";
     }
 }
 
@@ -67,13 +67,13 @@ const updatePlayers = (players) => {
         if (player.id === '' || player.id === game.clientId) {
             continue;
         }
-        if (game.players.getById(player.id) === null) {
+        if (game.players.children.ids[player.id] === undefined) {
             let newPlayer = drawPlayer(player.x, player.y, player.rotation, player.id)
             game.players.add(newPlayer);
             continue;
         }
-        game.players.getById(player.id).position.set(player.x, player.y);
-        game.players.getById(player.id).rotation = player.rotation;
+        game.players.children.ids[player.id].position.set(player.x, player.y);
+        game.players.children.ids[player.id].rotation = player.rotation;
     }
 };
 
@@ -129,7 +129,7 @@ const drawObstacle = (obstacleData) => {
 const drawItem = (item) => {
     switch (item.type) {
         case "coin":
-            if (!game.items.getById(item.id)){
+            if (!game.items.children.ids[item.id]){
                 return drawCoin(item)
             }
             break;
