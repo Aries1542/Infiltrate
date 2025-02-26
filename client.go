@@ -13,9 +13,9 @@ import (
 var upgrader = websocket.Upgrader{}
 
 type Client struct {
-	hub     *Hub
-	conn    *websocket.Conn
-	respond chan response
+	hub      *Hub
+	conn     *websocket.Conn
+	outgoing chan response
 }
 
 type response interface{}
@@ -72,14 +72,14 @@ func (c *Client) fromClient() {
 				log.Println("error unmarshalling request:", err)
 				break
 			}
-			c.hub.requestChan <- updating
+			c.hub.incoming <- updating
 		}
 	}
 }
 
 func (c *Client) toClient() {
 	defer func() {
-		c.hub.requestChan <- leaveRequest{client: c}
+		c.hub.incoming <- leaveRequest{client: c}
 		err := c.conn.Close()
 		if err != nil && !errors.Is(err, net.ErrClosed) {
 			log.Println("ws connection unable to close:", err)
@@ -88,7 +88,7 @@ func (c *Client) toClient() {
 		}
 	}()
 	for {
-		message := <-c.respond
+		message := <-c.outgoing
 		jsonMessage, err := json.Marshal(message)
 		if err != nil {
 			log.Println("error marshaling response: ", err)
@@ -113,11 +113,11 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		hub:     hub,
-		conn:    conn,
-		respond: make(chan response),
+		hub:      hub,
+		conn:     conn,
+		outgoing: make(chan response),
 	}
-	client.hub.requestChan <- joinRequest{client: client, username: requestedUsername}
+	client.hub.incoming <- joinRequest{client: client, username: requestedUsername}
 
 	go client.toClient()
 	go client.fromClient()

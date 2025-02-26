@@ -10,17 +10,16 @@ import (
 	"time"
 )
 
-// Hub Each request type will have its own type and channel
+// The Hub processes requests and updates server data accordingly.
 //
-//	The hub processes requests and updates server data accordingly
-//	It will also continually send data to clients
+//	It also continually sends server data to clients
 type Hub struct {
 	sync.RWMutex
-	requestChan chan request
-	nextID      int
-	players     map[*Client]player
-	obstacles   []obstacle
-	items       []item
+	incoming  chan request
+	nextID    int
+	players   map[*Client]player
+	obstacles []obstacle
+	items     []item
 }
 
 // a player is representation of the data needed to draw one client to another's screen
@@ -34,8 +33,8 @@ type player struct {
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
-// X and Y represent the top-left corner of the object
-// Anything not matching these should be made as an item (to be implemented)
+// X and Y represent the top-left corner of the object.
+// Anything not matching these should be made as an item.
 type obstacle struct {
 	X      float32
 	Y      float32
@@ -45,7 +44,7 @@ type obstacle struct {
 }
 
 // An item is anything that should be displayed and interacted with by the player, that does not fit as an obstacle.
-// The client will use the Type field to determine how to display and interact with the item
+// The Type field is used to determine how to display and interact with the item.
 type item struct {
 	Id   string
 	Type string
@@ -75,7 +74,7 @@ func (joining joinRequest) Handle(h *Hub) {
 	h.nextID++
 	h.Unlock()
 
-	client.respond <- setSceneResponse{
+	client.outgoing <- setSceneResponse{
 		Requesting: "setScene",
 		Id:         h.players[client].Id,
 		X:          0,
@@ -94,9 +93,9 @@ func (leaving leaveRequest) Handle(h *Hub) {
 	h.Lock()
 	delete(h.players, leaving.client)
 	h.Unlock()
-	close(leaving.client.respond)
+	close(leaving.client.outgoing)
 	for client := range h.players {
-		client.respond <- removeResponse{
+		client.outgoing <- removeResponse{
 			Requesting: "remove",
 			Type:       "player",
 			Id:         leavingClientId,
@@ -131,17 +130,17 @@ func newHub() *Hub {
 		log.Println(err)
 	}
 	return &Hub{
-		requestChan: make(chan request),
-		nextID:      1,
-		players:     make(map[*Client]player),
-		obstacles:   obstacles,
-		items:       items,
+		incoming:  make(chan request),
+		nextID:    1,
+		players:   make(map[*Client]player),
+		obstacles: obstacles,
+		items:     items,
 	}
 }
 
 func (h *Hub) run() {
 	for {
-		message := <-h.requestChan
+		message := <-h.incoming
 		message.Handle(h)
 	}
 }
@@ -158,7 +157,7 @@ func (h *Hub) updateClients() {
 				players = append(players, h.players[client])
 			}
 			for receivingClient := range h.players {
-				receivingClient.respond <- updateResponse{Requesting: "update", PlayersData: players}
+				receivingClient.outgoing <- updateResponse{Requesting: "update", PlayersData: players}
 			}
 			h.RUnlock()
 		case <-coinSpawnTicker.C:
@@ -167,7 +166,7 @@ func (h *Hub) updateClients() {
 			h.Unlock()
 			h.RLock()
 			for receivingClient := range h.players {
-				receivingClient.respond <- setSceneResponse{
+				receivingClient.outgoing <- setSceneResponse{
 					Requesting: "setScene",
 					Items:      h.items,
 				}
@@ -242,7 +241,7 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 		h.Unlock()
 
 		for eachClient := range h.players {
-			eachClient.respond <- removeResponse{
+			eachClient.outgoing <- removeResponse{
 				Requesting: "remove",
 				Type:       "item",
 				Id:         interactionId,
