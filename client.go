@@ -88,20 +88,18 @@ func (c *Client) toClient() {
 		}
 	}()
 	for {
-		select {
-		case message := <-c.respond:
-			jsonMessage, err := json.Marshal(message)
-			if err != nil {
-				log.Println("error marshaling response: ", err)
-				break
+		message := <-c.respond
+		jsonMessage, err := json.Marshal(message)
+		if err != nil {
+			log.Println("error marshaling response: ", err)
+			break
+		}
+		err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
+		if err != nil {
+			if err.Error() != "websocket: close sent" {
+				log.Println("msg to client failed:", err)
 			}
-			err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
-			if err != nil {
-				if err.Error() != "websocket: close sent" {
-					log.Println("msg to client failed:", err)
-				}
-				return
-			}
+			return
 		}
 	}
 }
