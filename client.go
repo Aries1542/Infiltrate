@@ -18,23 +18,66 @@ type Client struct {
 	outgoing chan response
 }
 
-type response interface{}
-type setSceneResponse struct {
-	Requesting string
-	Id         string
-	X          float32
-	Y          float32
-	Obstacles  []obstacle
-	Items      []item
+type response interface {
+	JSONFormat() ([]byte, error)
 }
+
+type setSceneResponse struct {
+	Player    player
+	Obstacles []obstacle
+	Items     []item
+}
+
+func (response setSceneResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting string
+		Id         string
+		X          float32
+		Y          float32
+		Obstacles  []obstacle
+		Items      []item
+	}{
+		Requesting: "setScene",
+		Id:         response.Player.Id,
+		X:          response.Player.X,
+		Y:          response.Player.Y,
+		Obstacles:  response.Obstacles,
+		Items:      response.Items,
+	})
+	return jsonMessage, err
+}
+
 type updateResponse struct {
-	Requesting  string
 	PlayersData []player
 }
+
+func (response updateResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting  string
+		PlayersData []player
+	}{
+		Requesting:  "update",
+		PlayersData: response.PlayersData,
+	})
+	return jsonMessage, err
+}
+
 type removeResponse struct {
-	Requesting string
-	Type       string
-	Id         string
+	Type string
+	Id   string
+}
+
+func (response removeResponse) JSONFormat() ([]byte, error) {
+	jsonMessage, err := json.Marshal(struct {
+		Requesting string
+		Type       string
+		Id         string
+	}{
+		Requesting: "remove",
+		Type:       response.Type,
+		Id:         response.Id,
+	})
+	return jsonMessage, err
 }
 
 // fromClient pumps messages from the websocket connection to the hub.
@@ -89,10 +132,10 @@ func (c *Client) toClient() {
 	}()
 	for {
 		message := <-c.outgoing
-		jsonMessage, err := json.Marshal(message)
+		jsonMessage, err := message.JSONFormat()
 		if err != nil {
 			log.Println("error marshaling response: ", err)
-			break
+			continue
 		}
 		err = c.conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		if err != nil {

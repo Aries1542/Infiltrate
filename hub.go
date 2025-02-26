@@ -75,12 +75,9 @@ func (joining joinRequest) Handle(h *Hub) {
 	h.Unlock()
 
 	client.outgoing <- setSceneResponse{
-		Requesting: "setScene",
-		Id:         h.players[client].Id,
-		X:          0,
-		Y:          0,
-		Obstacles:  h.obstacles,
-		Items:      h.items,
+		Player:    h.players[client],
+		Obstacles: h.obstacles,
+		Items:     h.items,
 	}
 }
 
@@ -96,9 +93,8 @@ func (leaving leaveRequest) Handle(h *Hub) {
 	close(leaving.client.outgoing)
 	for client := range h.players {
 		client.outgoing <- removeResponse{
-			Requesting: "remove",
-			Type:       "player",
-			Id:         leavingClientId,
+			Type: "player",
+			Id:   leavingClientId,
 		}
 	}
 }
@@ -157,7 +153,7 @@ func (h *Hub) updateClients() {
 				players = append(players, h.players[client])
 			}
 			for receivingClient := range h.players {
-				receivingClient.outgoing <- updateResponse{Requesting: "update", PlayersData: players}
+				receivingClient.outgoing <- updateResponse{PlayersData: players}
 			}
 			h.RUnlock()
 		case <-coinSpawnTicker.C:
@@ -167,8 +163,7 @@ func (h *Hub) updateClients() {
 			h.RLock()
 			for receivingClient := range h.players {
 				receivingClient.outgoing <- setSceneResponse{
-					Requesting: "setScene",
-					Items:      h.items,
+					Items: h.items,
 				}
 			}
 			h.RUnlock()
@@ -242,9 +237,8 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 
 		for eachClient := range h.players {
 			eachClient.outgoing <- removeResponse{
-				Requesting: "remove",
-				Type:       "item",
-				Id:         interactionId,
+				Type: "item",
+				Id:   interactionId,
 			}
 		}
 	}
