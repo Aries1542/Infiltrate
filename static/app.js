@@ -31,8 +31,7 @@ const handleMessage = (event) => {
                 game.clientId = player.id;
                 Object.assign(game.clientGlobalPos, {x: player.x, y: player.y});
             }
-            const mapData = {obstacles: obstacles, items: items};
-            drawMap(mapData);
+            drawMap(obstacles, items);
             break;
         case "update":
             const {players} = JSON.parse(event.data);

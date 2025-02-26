@@ -101,17 +101,17 @@ const drawActor = (x, y, rotation, color) => {
     return actor;
 };
 
-const drawMap = (mapData) => {
-    if (mapData.obstacles) {
-        globalToLocalCoords(mapData.obstacles);
-        for (const obstacleData of mapData.obstacles) {
-            game.obstacles.add(drawObstacle(obstacleData));
+const drawMap = (obstacles, items) => {
+    if (obstacles) {
+        globalToLocalCoords(obstacles);
+        for (const obstacle of obstacles) {
+            game.obstacles.add(drawObstacle(obstacle));
         }
     }
-    if (mapData.items) {
+    if (items) {
         game.items.remove(game.items.children);
-        globalToLocalCoords(mapData.items);
-        for (const item of mapData.items) {
+        globalToLocalCoords(items);
+        for (const item of items) {
             game.items.add(drawItem(item))
         }
     }
