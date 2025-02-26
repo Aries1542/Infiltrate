@@ -22,27 +22,26 @@ const game = {
 }
 
 const handleMessage = (event) => {
-    const {Requesting} = JSON.parse(event.data);
-    switch (Requesting) {
+    const {requesting} = JSON.parse(event.data);
+    switch (requesting) {
         case "setScene":
-            const {Id: myId, X, Y, Obstacles, Items} = JSON.parse(event.data);
-            console.log(myId);
-            if (myId) {
-                game.clientId = myId
-                Object.assign(game.clientGlobalPos, {x: X, y: Y});
+            console.log(JSON.parse(event.data));
+            const {player, obstacles, items} = JSON.parse(event.data);
+            if (player.id) {
+                game.clientId = player.id;
+                Object.assign(game.clientGlobalPos, {x: player.x, y: player.y});
             }
-            const mapData = {obstacles: Obstacles, items: Items};
-            drawMap(mapData);
+            drawMap(obstacles, items);
             break;
         case "update":
-            const {PlayersData} = JSON.parse(event.data);
-            globalToLocalCoords(PlayersData);
-            updatePlayers(PlayersData);
-            updateScoreboard(PlayersData);
+            const {players} = JSON.parse(event.data);
+            globalToLocalCoords(players);
+            updatePlayers(players);
+            updateScoreboard(players);
             break;
         case "remove":
-            const {Type, Id: removeId} = JSON.parse(event.data);
-            switch (Type) {
+            const {type, id: removeId} = JSON.parse(event.data);
+            switch (type) {
                 case "player":
                     game.players.getById(removeId).remove();
                     break;
@@ -208,8 +207,8 @@ const updateCoin = (coin) => {
 // Or at least work for single objects as well
 const globalToLocalCoords = (data) => {
     for (const datum of data) {
-        datum.X = clientX + (datum.X - game.clientGlobalPos.x);
-        datum.Y = clientY + (datum.Y - game.clientGlobalPos.y);
+        datum.x = clientX + (datum.x - game.clientGlobalPos.x);
+        datum.y = clientY + (datum.y - game.clientGlobalPos.y);
     }
 };
 

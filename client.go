@@ -30,17 +30,13 @@ type setSceneResponse struct {
 
 func (response setSceneResponse) JSONFormat() ([]byte, error) {
 	jsonMessage, err := json.Marshal(struct {
-		Requesting string
-		Id         string
-		X          float32
-		Y          float32
-		Obstacles  []obstacle
-		Items      []item
+		Requesting string     `json:"requesting"`
+		Player     player     `json:"player"`
+		Obstacles  []obstacle `json:"obstacles"`
+		Items      []item     `json:"items"`
 	}{
 		Requesting: "setScene",
-		Id:         response.Player.Id,
-		X:          response.Player.X,
-		Y:          response.Player.Y,
+		Player:     response.Player,
 		Obstacles:  response.Obstacles,
 		Items:      response.Items,
 	})
@@ -53,8 +49,8 @@ type updateResponse struct {
 
 func (response updateResponse) JSONFormat() ([]byte, error) {
 	jsonMessage, err := json.Marshal(struct {
-		Requesting  string
-		PlayersData []player
+		Requesting  string   `json:"requesting"`
+		PlayersData []player `json:"players"`
 	}{
 		Requesting:  "update",
 		PlayersData: response.PlayersData,
@@ -69,9 +65,9 @@ type removeResponse struct {
 
 func (response removeResponse) JSONFormat() ([]byte, error) {
 	jsonMessage, err := json.Marshal(struct {
-		Requesting string
-		Type       string
-		Id         string
+		Requesting string `json:"requesting"`
+		Type       string `json:"type"`
+		Id         string `json:"id"`
 	}{
 		Requesting: "remove",
 		Type:       response.Type,
