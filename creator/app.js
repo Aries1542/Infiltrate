@@ -136,7 +136,7 @@ const makeObstacleComplete = (event) => {
     if (startX === null || startY === null) {
         return;
     }
-    game.obstacles.add(preview);
+    if (preview) game.obstacles.add(preview);
     preview.fill = "#008";
     startX = null;
     startY = null;
@@ -153,7 +153,7 @@ const deletePreview = (event) => {
     }
     if (preview) preview.remove()
     preview = drawObstacle({
-        x: startX - (startX % game.gridSize) - game.gridSize/2,
+        x: startX - (startX % game.gridSize) - game.gridSize,
         y: startY - (startY % game.gridSize) - game.gridSize/2,
         width: event.x - startX + (game.gridSize - ((event.x - startX) % game.gridSize)) + game.gridSize,
         height: event.y - startY + (game.gridSize - ((event.y - startY) % game.gridSize)) + game.gridSize,
