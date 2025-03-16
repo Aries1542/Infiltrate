@@ -6,6 +6,9 @@ const two = new Two(params); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
 two.appendTo(document.body)
 
+centerX = .5 * two.width;
+centerY = .5 * two.height;
+
 const game = {
     gridSize: 20,
     grid: null,
@@ -215,6 +218,7 @@ printData = () => {
             color: obstacle.fill,
         });
     }
+    localToGlobalCoords(obstacles)
     const items = []
     for (const item of game.items.children) {
         items.push({
@@ -224,7 +228,15 @@ printData = () => {
             id: item.id,
         });
     }
+    localToGlobalCoords(items)
     console.log(JSON.stringify({obstacles, items}));
+};
+
+const localToGlobalCoords = (data) => {
+    for (const datum of data) {
+        datum.x = (datum.x - centerX);
+        datum.y = (datum.y - centerY);
+    }
 };
 
 

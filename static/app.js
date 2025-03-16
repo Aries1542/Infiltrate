@@ -12,7 +12,7 @@ const game = {
     mouse: {x: 0, y: 0},
     moveSpeed: 2,
     clientGlobalPos: {x: 0, y: 0},
-    gridSize: 100,
+    gridSize: 20,
     grid: null,
     items: null,
     obstacles: null,
