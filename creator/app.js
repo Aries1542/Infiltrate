@@ -179,11 +179,25 @@ const makeObstaclePreview = (event) => {
         return;
     }
     if (preview) preview.remove()
+    let left = startX - (startX % game.gridSize) - game.gridSize/2;
+    let top = startY - (startY % game.gridSize) - game.gridSize/2;
+    let right = event.x - (event.x % game.gridSize) + game.gridSize/2;
+    let bottom = event.y - (event.y % game.gridSize) + game.gridSize/2;
+    if (right < left) {
+        const temp = left;
+        left = right;
+        right = temp;
+    }
+    if (bottom < top) {
+        const temp = top;
+        top = bottom;
+        bottom = temp;
+    }
     preview = drawObstacle({
-        x: startX - (startX % game.gridSize) - game.gridSize,
-        y: startY - (startY % game.gridSize) - game.gridSize/2,
-        width: event.x - startX + (game.gridSize - ((event.x - startX) % game.gridSize)) + game.gridSize,
-        height: event.y - startY + (game.gridSize - ((event.y - startY) % game.gridSize)) + game.gridSize,
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
         color: "#0088",
     });
 }
@@ -207,11 +221,25 @@ const deletePreview = (event) => {
         return;
     }
     if (preview) preview.remove()
+    let left = startX - (startX % game.gridSize) - game.gridSize/2;
+    let top = startY - (startY % game.gridSize) - game.gridSize/2;
+    let right = event.x - (event.x % game.gridSize) + game.gridSize/2;
+    let bottom = event.y - (event.y % game.gridSize) + game.gridSize/2;
+    if (right < left) {
+        const temp = left;
+        left = right;
+        right = temp;
+    }
+    if (bottom < top) {
+        const temp = top;
+        top = bottom;
+        bottom = temp;
+    }
     preview = drawObstacle({
-        x: startX - (startX % game.gridSize) - game.gridSize,
-        y: startY - (startY % game.gridSize) - game.gridSize/2,
-        width: event.x - startX + (game.gridSize - ((event.x - startX) % game.gridSize)) + game.gridSize,
-        height: event.y - startY + (game.gridSize - ((event.y - startY) % game.gridSize)) + game.gridSize,
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
         color: "#a008",
     });
     for (const obstacle of game.obstacles.children) {
@@ -233,7 +261,7 @@ const deletePreview = (event) => {
     }
 }
 const deleteComplete = (event) => {
-    if (startX === null || startY === null) {
+    if (startX === null || startY === null || preview === null) {
         return;
     }
     for (const obstacle of game.obstacles.children) {
@@ -255,7 +283,7 @@ const deleteComplete = (event) => {
     }
     startX = null;
     startY = null;
-    if (preview) preview.remove();
+    preview.remove();
     preview = null;
 }
 
