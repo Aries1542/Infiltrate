@@ -6,18 +6,18 @@ const two = new Two(params); // Base class used for all drawing
 two.renderer.domElement.style.background = '#ddd'
 two.appendTo(document.body)
 
-centerX = .5 * two.width;
-centerY = .5 * two.height;
+const centerX = .5 * two.width;
+const centerY = .5 * two.height;
 
 const game = {
     gridSize: 20,
     grid: null,
     obstacles: null,
     items: null,
-    nextId: 1
+    nextId: 1,
+    moveSpeed: 2,
+    offset: {x: 0, y: 0},
 }
-
-sizeRatio = game.gridSize / 100;
 
 const main = () => {
     game.grid = drawGrid();
@@ -26,7 +26,37 @@ const main = () => {
     drawPlayer(.5 * two.width, .5 * two.height, 0, "spawnReference");
     console.log("Options:\n\tV: make obstacle\n\tC: make coin\n\tR: delete\n\tP: print JSON data");
     console.log("Current mode: make obstacle");
+    setInterval(update, 15);
 };
+
+const update = () => {
+    const delta = getKeyInput();
+    delta.x *= game.moveSpeed; delta.y *= game.moveSpeed;
+    two.scene.position.subtract(delta);
+    game.offset.x += delta.x;
+    game.offset.y += delta.y;
+}
+
+const getKeyInput = () => {
+    const delta = {x: 0, y: 0};
+    if (keysDown["KeyW"]) {
+        delta.y -= 1;
+    }
+    if (keysDown["KeyA"]) {
+        delta.x -= 1;
+    }
+    if (keysDown["KeyS"]) {
+        delta.y += 1;
+    }
+    if (keysDown["KeyD"]) {
+        delta.x += 1;
+    }
+    if (delta.x && delta.y) {
+        delta.x *= .70710678 // sqrt(1/2)
+        delta.y *= .70710678
+    }
+    return delta;
+}
 
 window.addEventListener("resize", function(){
 });
@@ -40,6 +70,15 @@ const keysDown = {
 onkeydown = onkeyup = (event) => {
     keysDown[event.code] = (event.type === "keydown");
     switch (event.code) {
+        case "KeyW":
+        case "KeyA":
+        case "KeyS":
+        case "KeyD":
+            break;
+        case "Space":
+            console.log("Resetting camera position");
+            two.scene.position.set(0, 0);
+            break;
         case "KeyV":
             mode = "makeObstacle";
             console.log("Switched to makeObstacle mode");
@@ -63,6 +102,13 @@ let startX = null;
 let startY = null;
 let preview = null;
 onmousedown = (event) => {
+    event = {x: event.x, y: event.y};
+    console.log("Event: ", event);
+    console.log("Before: ", event.x, event.y);
+    console.log("Offset: ", game.offset.x, game.offset.y);
+    event.x += game.offset.x;
+    event.y += game.offset.y;
+    console.log("After: ", event.x, event.y);
     switch (mode) {
         case "makeObstacle":
             makeObstacleBegin(event);
@@ -78,6 +124,9 @@ onmousedown = (event) => {
     }
 };
 onmousemove = (event) => {
+    event = {x: event.x, y: event.y};
+    event.x += game.offset.x;
+    event.y += game.offset.y;
     switch (mode) {
         case "makeObstacle":
             makeObstaclePreview(event);
@@ -92,6 +141,9 @@ onmousemove = (event) => {
     }
 }
 onmouseup = (event) => {
+    event = {x: event.x, y: event.y};
+    event.x += game.offset.x;
+    event.y += game.offset.y;
     switch (mode) {
         case "makeObstacle":
             makeObstacleComplete(event);
