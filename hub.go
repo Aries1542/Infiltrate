@@ -158,13 +158,25 @@ func (h *Hub) updateClients() {
 			}
 			h.RUnlock()
 		case <-coinSpawnTicker.C:
-			h.RLock()
+			h.Lock()
+			content, err := os.ReadFile("./mapData.json")
+			if err != nil {
+				log.Fatal("Error when opening file: ", err)
+			}
+			mapData := struct {
+				Items []item
+			}{}
+			err = json.Unmarshal(content, &mapData)
+			if err != nil {
+				log.Println(err)
+			}
+			h.items = mapData.Items
 			for receivingClient := range h.players {
 				receivingClient.outgoing <- setSceneResponse{
 					Items: h.items,
 				}
 			}
-			h.RUnlock()
+			h.Unlock()
 		}
 	}
 }
@@ -206,8 +218,8 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 	switch h.items[interacted].Type {
 	case "coin":
 		h.Lock()
-		// h.items[interacted] = h.items[len(h.items)-1]
-		// h.items = h.items[:len(h.items)-1]
+		h.items[interacted] = h.items[len(h.items)-1]
+		h.items = h.items[:len(h.items)-1]
 
 		updatingPlayer := h.players[client]
 		updatingPlayer.Score++
