@@ -205,8 +205,8 @@ const updateCoin = (coin) => {
 // Takes a list of data and intended parent and converts x and y for each item to local coordinates
 const globalToLocalCoords = (data, parent) => {
     for (const datum of data) {
-        datum.x = clientX + ((datum.x + parent.position.x) - game.clientGlobalPos.x);
-        datum.y = clientY + ((datum.y + parent.position.y) - game.clientGlobalPos.y);
+        datum.x = clientX + ((datum.x));
+        datum.y = clientY + ((datum.y));
     }
 };
 

@@ -26,8 +26,8 @@ const main = () => {
     game.obstacles = two.makeGroup();
     game.items = two.makeGroup();
     loadData();
-    drawPlayer(.5 * two.width, .5 * two.height, 0, "spawnReference");
-    console.log("Options:\n\tV: make obstacle\n\tC: make coin\n\tR: delete\n\tP: save date");
+    drawPlayer(centerX, centerY, 0, "spawnReference");
+    console.log("Options:\n\tC: make coin mode\n\tV: make obstacle mode\n\tB: make crate mode\n\tR: delete mode\n\tZ: abort action\n\n\tP: save data\n\tL: load data\n\n\tWASD: move camera\n\tShift: move faster\n\tSpace: reset camera");
     console.log("Current mode: make obstacle");
     setInterval(update, 15);
 };
@@ -35,6 +35,9 @@ const main = () => {
 const update = () => {
     const delta = getKeyInput();
     delta.x *= game.moveSpeed; delta.y *= game.moveSpeed;
+    if (keysDown["ShiftLeft"]) {
+        delta.x *= 2; delta.y *= 2;
+    }
     two.scene.position.subtract(delta);
     game.offset.x += delta.x;
     game.offset.y += delta.y;
@@ -69,6 +72,7 @@ const keysDown = {
     "KeyA": false,
     "KeyS": false,
     "KeyD": false,
+    "ShiftLeft": false,
 };
 onkeydown = (event) => {
     keysDown[event.code] = true;
@@ -79,23 +83,38 @@ onkeydown = (event) => {
         case "KeyD":
             break;
         case "Space":
+            haltAction();
             console.log("Resetting camera position");
             two.scene.position.set(0, 0);
             break;
+        case "KeyB":
+            haltAction();
+            mode = "makeCrate";
+            console.log("Switched to makeCrate mode");
+            break;
         case "KeyV":
+            haltAction();
             mode = "makeObstacle";
             console.log("Switched to makeObstacle mode");
             break;
         case "KeyC":
+            haltAction();
             mode = "makeCoin";
             console.log("Switched to makeCoin mode");
             break;
         case "KeyR":
+            haltAction();
             mode = "delete";
             console.log("Switched to delete mode");
             break;
+        case "KeyZ":
+            haltAction();
+            break;
         case "KeyP":
             saveData();
+            break;
+        case "KeyL":
+            loadData();
             break;
     }
 };
@@ -109,21 +128,15 @@ let startY = null;
 let preview = null;
 onmousedown = (event) => {
     event = { x: event.x, y: event.y };
-    console.log("Event: ", event);
-    console.log("Before: ", event.x, event.y);
-    console.log("Offset: ", game.offset.x, game.offset.y);
     event.x += game.offset.x;
     event.y += game.offset.y;
-    console.log("After: ", event.x, event.y);
     switch (mode) {
         case "makeObstacle":
             makeObstacleBegin(event);
             break;
         case "delete":
-            deleteBegin(event);
-            break;
         case "makeCoin":
-            makeCoin(event);
+        case "makeCrate":
             break;
         default:
             console.error("Unknown mode: " + mode);
@@ -141,6 +154,10 @@ onmousemove = (event) => {
             deletePreview(event);
             break;
         case "makeCoin":
+            makeCoinPreview(event)
+            break;
+        case "makeCrate":
+            makeCratePreview(event)
             break;
         default:
             console.error("Unknown mode: " + mode);
@@ -158,45 +175,60 @@ onmouseup = (event) => {
             deleteComplete(event);
             break;
         case "makeCoin":
+            makeCoinComplete(event)
+            break;
+        case "makeCrate":
+            makeCrateComplete(event)
             break;
         default:
             console.error("Unknown mode: " + mode);
     }
 };
 
-const makeCoin = (event) => {
-    const coin = drawCoin({
-        x: event.x,
-        y: event.y,
-        type: "coin",
-        id: "coin" + game.nextId,
-    });
-    game.items.add(coin);
+
+const makeCoinPreview = (event) => {
+    if (!preview) {
+        preview = drawCoin({
+            x: event.x,
+            y: event.y,
+            type: "coin",
+            id: "coin" + game.nextId,
+        });
+        preview.opacity = .8
+    } else {
+        preview.position.set(event.x, event.y)
+    }
+}
+const makeCoinComplete = (event) => {
+    if (preview === null) return;
+    preview.opacity = 1;
+    game.items.add(preview);
     game.nextId++;
+    preview = null;
 }
 
 
 const makeObstacleBegin = (event) => {
-    startX = event.x;
-    startY = event.y;
+    startX = Math.floor(event.x / game.gridSize) * game.gridSize;
+    startY = Math.floor(event.y / game.gridSize) * game.gridSize;
 }
 const makeObstaclePreview = (event) => {
     if (startX === null || startY === null) {
         return;
     }
     if (preview) preview.remove()
-    let left = startX - (startX % game.gridSize) - game.gridSize / 2;
-    let top = startY - (startY % game.gridSize) - game.gridSize / 2;
-    let right = event.x - (event.x % game.gridSize) + game.gridSize / 2;
-    let bottom = event.y - (event.y % game.gridSize) + game.gridSize / 2;
-    if (right < left) {
-        const temp = left;
-        left = right;
+    let left = startX;
+    let top = startY;
+    let right = Math.floor(event.x / game.gridSize + 1) * game.gridSize;
+    let bottom = Math.floor(event.y / game.gridSize + 1) * game.gridSize;
+    if (right <= left) {
+        const temp = left + game.gridSize;
+        left = right - game.gridSize;
         right = temp;
     }
-    if (bottom < top) {
-        const temp = top;
-        top = bottom;
+    if (bottom <= top) {
+        const temp = top + game.gridSize;
+        top = bottom - game.gridSize;
         bottom = temp;
     }
     preview = drawObstacle({
@@ -211,98 +243,101 @@ const makeObstacleComplete = (event) => {
     if (startX === null || startY === null) {
         return;
     }
-    if (preview) game.obstacles.add(preview);
-    preview.fill = "#008";
+    console.log(preview)
+    if (preview)
+        if (preview.width >= game.gridSize && preview.height >= game.gridSize) {
+            game.obstacles.add(preview);
+            preview.fill = "#008";
+        }
+        else
+            preview.remove();
     startX = null;
     startY = null;
     preview = null;
 }
 
-const deleteBegin = (event) => {
-    startX = event.x;
-    startY = event.y;
+const makeCratePreview = (event) => {
+    if (!preview) {
+        preview = drawObstacle({
+            x: event.x - 20,
+            y: event.y - 20,
+            width: 40,
+            height: 40,
+            color: "#b75",
+            stroke: "#753"
+        });
+        preview.opacity = .8
+    } else {
+        preview.position.set(event.x, event.y)
+    }
 }
+const makeCrateComplete = (event) => {
+    if (preview === null) return;
+    preview.opacity = 1
+    game.obstacles.add(preview);
+    game.nextId++;
+    preview = null;
+}
+
+
 const deletePreview = (event) => {
-    if (startX === null || startY === null) {
-        return;
-    }
-    if (preview) preview.remove()
-    let left = startX - (startX % game.gridSize) - game.gridSize / 2;
-    let top = startY - (startY % game.gridSize) - game.gridSize / 2;
-    let right = event.x - (event.x % game.gridSize) + game.gridSize / 2;
-    let bottom = event.y - (event.y % game.gridSize) + game.gridSize / 2;
-    if (right < left) {
-        const temp = left;
-        left = right;
-        right = temp;
-    }
-    if (bottom < top) {
-        const temp = top;
-        top = bottom;
-        bottom = temp;
-    }
-    preview = drawObstacle({
-        x: left,
-        y: top,
-        width: right - left,
-        height: bottom - top,
-        color: "#a008",
-    });
     for (const obstacle of game.obstacles.children) {
-        if (obstacle.position.x - obstacle.width / 2 > preview.position.x + preview.width / 2 ||
-            obstacle.position.x + obstacle.width / 2 < preview.position.x - preview.width / 2 ||
-            obstacle.position.y - obstacle.height / 2 > preview.position.y + preview.height / 2 ||
-            obstacle.position.y + obstacle.height / 2 < preview.position.y - preview.height / 2
-        ) obstacle.fill = "#008"
-        else obstacle.fill = "#a00"
+        if (obstacle.position.x - obstacle.width / 2 > event.x ||
+            obstacle.position.x + obstacle.width / 2 < event.x ||
+            obstacle.position.y - obstacle.height / 2 > event.y ||
+            obstacle.position.y + obstacle.height / 2 < event.y
+        ) obstacle.opacity = 1;
+        else obstacle.opacity = .5;
     }
     for (const item of game.items.children) {
-        if (item.type === "coin" && (
-            item.position.x - item.radius > preview.position.x + preview.width / 2 ||
-            item.position.x + item.radius < preview.position.x - preview.width / 2 ||
-            item.position.y - item.radius > preview.position.y + preview.height / 2 ||
-            item.position.y + item.radius < preview.position.y - preview.height / 2)
-        ) item.fill = "#fe7";
-        else item.fill = "#a00";
+        if (item.type === "coin"
+            && ((event.x - item.position.x) ** 2 + (event.y - item.position.y) ** 2 > item.radius ** 2))
+            item.opacity = 1;
+        else item.opacity = .5;
     }
 }
 const deleteComplete = (event) => {
-    if (startX === null || startY === null || preview === null) {
-        return;
-    }
+    deleted = []
     for (const obstacle of game.obstacles.children) {
-        if (obstacle.position.x - obstacle.width / 2 > preview.position.x + preview.width / 2 ||
-            obstacle.position.x + obstacle.width / 2 < preview.position.x - preview.width / 2 ||
-            obstacle.position.y - obstacle.height / 2 > preview.position.y + preview.height / 2 ||
-            obstacle.position.y + obstacle.height / 2 < preview.position.y - preview.height / 2
-        ) obstacle.fill = "#008";
-        else obstacle.remove();
+        if (obstacle.position.x - obstacle.width / 2 > event.x ||
+            obstacle.position.x + obstacle.width / 2 < event.x ||
+            obstacle.position.y - obstacle.height / 2 > event.y ||
+            obstacle.position.y + obstacle.height / 2 < event.y
+        ) obstacle.opacity = 1;
+        else deleted.push(obstacle);
     }
     for (const item of game.items.children) {
-        if (item.type === "coin" && (
-            item.position.x - item.radius > preview.position.x + preview.width / 2 ||
-            item.position.x + item.radius < preview.position.x - preview.width / 2 ||
-            item.position.y - item.radius > preview.position.y + preview.height / 2 ||
-            item.position.y + item.radius < preview.position.y - preview.height / 2)
-        ) item.fill = "#fe7";
-        else item.remove();
+        if (item.type === "coin"
+            && ((event.x - item.position.x) ** 2 + (event.y - item.position.y) ** 2 > item.radius ** 2))
+            item.opacity = 1;
+        else deleted.push(item);
+    }
+    for (const each of deleted) each.remove();
+}
+
+const haltAction = (event) => {
+    for (const obstacle of game.obstacles.children) obstacle.opacity = 1;
+    for (const item of game.items.children) item.opacity = 1;
+    if (preview) {
+        preview.remove();
+        preview = null;
     }
     startX = null;
     startY = null;
-    preview.remove();
-    preview = null;
 }
 
 const saveData = () => {
     const obstacles = []
     for (const obstacle of game.obstacles.children) {
-        obstacles.push({
+        const obstacleData ={ 
             x: obstacle.position.x - obstacle.width / 2,
             y: obstacle.position.y - obstacle.height / 2,
             width: obstacle.width,
             height: obstacle.height,
             color: obstacle.fill,
-        });
+        }
+        if (obstacle.stroke) obstacleData.stroke = obstacle.stroke
+        obstacles.push(obstacleData);
     }
     localToGlobalCoords(obstacles)
     const items = []
@@ -331,6 +366,8 @@ const loadData = () => {
     fetch("/load?filename=" + filename)
         .then(response => response.json())
         .then(data => {
+            game.obstacles.remove(game.obstacles.children);
+            game.items.remove(game.items.children);
             const { obstacles, items } = data;
             two.scene.position.set(0, 0);
             drawMap(obstacles, items);

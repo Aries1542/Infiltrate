@@ -41,6 +41,7 @@ type obstacle struct {
 	Width  float32 `json:"width"`
 	Height float32 `json:"height"`
 	Color  string  `json:"color"`
+	Stroke string  `json:"stroke"`
 }
 
 // An item is anything that should be displayed and interacted with by the player, that does not fit as an obstacle.
@@ -143,7 +144,7 @@ func (h *Hub) run() {
 
 func (h *Hub) updateClients() {
 	updateTicker := time.NewTicker(10 * time.Millisecond)
-	coinSpawnTicker := time.NewTicker(90 * time.Second)
+	coinSpawnTicker := time.NewTicker(2 * time.Minute)
 	for {
 		select {
 		case <-updateTicker.C:
@@ -157,9 +158,6 @@ func (h *Hub) updateClients() {
 			}
 			h.RUnlock()
 		case <-coinSpawnTicker.C:
-			h.Lock()
-			h.items = generateCoins()
-			h.Unlock()
 			h.RLock()
 			for receivingClient := range h.players {
 				receivingClient.outgoing <- setSceneResponse{
@@ -188,26 +186,7 @@ func readObstacles() ([]obstacle, []item, error) {
 		log.Println(err)
 		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
 	}
-	mapData.Items = append(mapData.Items, generateCoins()...)
 	return mapData.Obstacles, mapData.Items, nil
-}
-
-func generateCoins() []item {
-	items := make([]item, 0)
-	id := 1
-	var x, y float32
-	for x = -1000; x < 1000; x += 200 {
-		for y = -1000; y < 1000; y += 200 {
-			items = append(items, item{
-				Id:   "coin" + strconv.Itoa(id),
-				Type: "coin",
-				X:    x,
-				Y:    y,
-			})
-			id++
-		}
-	}
-	return items
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {
@@ -227,8 +206,8 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 	switch h.items[interacted].Type {
 	case "coin":
 		h.Lock()
-		h.items[interacted] = h.items[len(h.items)-1]
-		h.items = h.items[:len(h.items)-1]
+		// h.items[interacted] = h.items[len(h.items)-1]
+		// h.items = h.items[:len(h.items)-1]
 
 		updatingPlayer := h.players[client]
 		updatingPlayer.Score++
