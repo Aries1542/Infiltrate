@@ -22,8 +22,11 @@ const game = {
     socket: null,
 }
 
+// console.log(two.width, two.height)
+
 const handleMessage = (event) => {
     const {requesting} = JSON.parse(event.data);
+    console.log("Received message: " + requesting);
     switch (requesting) {
         case "setScene":
             const {player, obstacles, items} = JSON.parse(event.data);
@@ -138,6 +141,7 @@ const update = () => {
     game.grid.position.subtract(delta);
     game.obstacles.position.subtract(delta);
     game.items.position.subtract(delta);
+    game.players.position.subtract(delta);
     game.clientGlobalPos.x += delta.x;
     game.clientGlobalPos.y += delta.y;
     game.client.rotation = Math.atan2(game.mouse.y - clientY, game.mouse.x - clientX) + .5*Math.PI;
