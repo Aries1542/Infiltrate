@@ -86,6 +86,7 @@ onkeydown = (event) => {
             haltAction();
             console.log("Resetting camera position");
             two.scene.position.set(0, 0);
+            game.offset = { x: 0, y: 0 };
             break;
         case "KeyB":
             haltAction();
@@ -369,6 +370,7 @@ const loadData = () => {
             game.obstacles.remove(game.obstacles.children);
             game.items.remove(game.items.children);
             const { obstacles, items } = data;
+            game.nextId = items[items.length-1] ? Number((items[items.length-1].id).substring(4)) + 1 : 1;
             two.scene.position.set(0, 0);
             drawMap(obstacles, items);
         });
