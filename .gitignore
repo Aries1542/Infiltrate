@@ -23,3 +23,6 @@ go.work.sum
 
 # ide settings
 .idea
+
+#temporary files
+creator/mapData.json
