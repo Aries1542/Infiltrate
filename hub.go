@@ -234,3 +234,14 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 		}
 	}
 }
+
+func (h *Hub) usernameExists(username string) bool {
+	h.RLock()
+	defer h.RUnlock()
+	for _, player := range h.players {
+		if player.Username == username {
+			return true
+		}
+	}
+	return false
+}

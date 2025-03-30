@@ -144,9 +144,14 @@ func (c *Client) toClient() {
 }
 
 func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	requestedUsername := r.URL.Query().Get("username")
-	log.Println(requestedUsername, "has joined")
-	conn, err := upgrader.Upgrade(w, r, nil) // upgrade the connection to a websocket connection
+	username := r.URL.Query().Get("username")
+	valid, _ := usernameValid(hub, username)
+	if !valid {
+		http.Error(w, "username not allowed, connection refused", http.StatusBadRequest)
+		return
+	}
+	log.Println(username, "has joined")
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade failed: ", err)
 		return
@@ -156,8 +161,34 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn:     conn,
 		outgoing: make(chan response),
 	}
-	client.hub.incoming <- joinRequest{client: client, username: requestedUsername}
+	client.hub.incoming <- joinRequest{client: client, username: username}
 
 	go client.toClient()
 	go client.fromClient()
+}
+
+func requestUsername(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	valid, reason := usernameValid(hub, username)
+	if !valid {
+		switch reason {
+		case "bad length":
+			http.Error(w, "username has bad length", http.StatusBadRequest)
+			return
+		case "in use":
+			http.Error(w, "username in use", http.StatusBadRequest)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func usernameValid(hub *Hub, username string) (bool, string) {
+	if len(username) < 1 || len(username) > 15 {
+		return false, "bad length"
+	}
+	if hub.usernameExists(username) {
+		return false, "in use"
+	}
+	return true, ""
 }

@@ -15,6 +15,9 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		connectClient(hub, w, r)
 	})
+	http.HandleFunc("/namecheck", func(w http.ResponseWriter, r *http.Request) {
+		requestUsername(hub, w, r)
+	})
 
 	log.Println("Server started!")
 	err := http.ListenAndServe(":8080", nil)
