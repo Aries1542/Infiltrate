@@ -18,6 +18,7 @@ type Hub struct {
 	incoming  chan request
 	nextID    int
 	players   map[*Client]player
+	guards    []guard
 	obstacles []obstacle
 	items     []item
 }
@@ -30,6 +31,13 @@ type player struct {
 	Y        float32 `json:"y"`
 	Rotation float32 `json:"rotation"`
 	Score    int     `json:"score"`
+}
+
+type guard struct {
+	Id       string  `json:"id"`
+	X        float32 `json:"x"`
+	Y        float32 `json:"y"`
+	Rotation float32 `json:"rotation"`
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -123,6 +131,13 @@ func (updating updateRequest) Handle(h *Hub) {
 
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
+	guards := make([]guard, 0)
+	guards = append(guards, guard{
+		Id:       "guard1",
+		X:        15,
+		Y:        15,
+		Rotation: 0,
+	})
 	if err != nil {
 		log.Println(err)
 	}
@@ -130,12 +145,13 @@ func newHub() *Hub {
 		incoming:  make(chan request),
 		nextID:    1,
 		players:   make(map[*Client]player),
+		guards:    guards,
 		obstacles: obstacles,
 		items:     items,
 	}
 }
 
-func (h *Hub) run() {
+func (h *Hub) handleMessages() {
 	for {
 		message := <-h.incoming
 		message.Handle(h)
@@ -154,7 +170,7 @@ func (h *Hub) updateClients() {
 				players = append(players, h.players[client])
 			}
 			for receivingClient := range h.players {
-				receivingClient.outgoing <- updateResponse{PlayersData: players}
+				receivingClient.outgoing <- updateResponse{Players: players, Guards: h.guards}
 			}
 			h.RUnlock()
 		case <-coinSpawnTicker.C:

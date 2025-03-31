@@ -46,16 +46,19 @@ func (response setSceneResponse) JSONFormat() ([]byte, error) {
 }
 
 type updateResponse struct {
-	PlayersData []player
+	Players []player
+	Guards  []guard
 }
 
 func (response updateResponse) JSONFormat() ([]byte, error) {
 	jsonMessage, err := json.Marshal(struct {
-		Requesting  string   `json:"requesting"`
-		PlayersData []player `json:"players"`
+		Requesting string   `json:"requesting"`
+		Players    []player `json:"players"`
+		Guards     []guard  `json:"guards"`
 	}{
-		Requesting:  "update",
-		PlayersData: response.PlayersData,
+		Requesting: "update",
+		Players:    response.Players,
+		Guards:     response.Guards,
 	})
 	return jsonMessage, err
 }

@@ -17,6 +17,7 @@ const game = {
     items: null,
     obstacles: null,
     players: null,
+    guards: null,
     client: null,
     ui: null,
     socket: null,
@@ -34,9 +35,12 @@ const handleMessage = (event) => {
             drawMap(obstacles, items);
             break;
         case "update":
-            const {players} = JSON.parse(event.data);
+            const {players, guards} = JSON.parse(event.data);
+            console.log(guards);
             globalToLocalCoords(players, game.players);
+            globalToLocalCoords(guards, game.guards);  
             updatePlayers(players);
+            updateGuards(guards);
             updateScoreboard(players);
             break;
         case "remove":
@@ -115,6 +119,7 @@ const main = () => {
     game.items = two.makeGroup()
     game.obstacles = two.makeGroup()
     game.players = two.makeGroup()
+    game.guards = two.makeGroup()
     game.client = drawClient(clientX, clientY)
     game.ui = drawUI()
     document.getElementById("play-button").onclick = onClickPlay;
@@ -168,6 +173,7 @@ const update = () => {
     game.obstacles.position.subtract(delta);
     game.items.position.subtract(delta);
     game.players.position.subtract(delta);
+    game.guards.position.subtract(delta);
     game.clientGlobalPos.x += delta.x;
     game.clientGlobalPos.y += delta.y;
     game.client.rotation = Math.atan2(game.mouse.y - clientY, game.mouse.x - clientX) + .5*Math.PI;

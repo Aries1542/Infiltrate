@@ -8,7 +8,7 @@ import (
 func main() {
 
 	hub := newHub()
-	go hub.run()
+	go hub.handleMessages()
 	go hub.updateClients()
 
 	http.Handle("/", http.FileServer(http.Dir("static"))) // serve the static directory to the client
