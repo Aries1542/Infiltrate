@@ -86,6 +86,10 @@ const attemptConnection = (username) => {
                             error.innerHTML = "Please input a username between 1 and 15 characters";
                             error.style.display = "block";
                             break;
+                        case "username is inappropriate":
+                            error.innerHTML = "Please input a username that is appropriate";
+                            error.style.display = "block";
+                            break;
                         default:
                             console.log("Unknown response: " + text);
                     }

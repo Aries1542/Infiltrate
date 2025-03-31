@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 )
@@ -178,6 +180,9 @@ func requestUsername(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		case "in use":
 			http.Error(w, "username in use", http.StatusBadRequest)
 			return
+		case "inappropriate":
+			http.Error(w, "username is inappropriate", http.StatusBadRequest)
+			return
 		}
 	}
 	w.WriteHeader(http.StatusOK)
@@ -190,5 +195,30 @@ func usernameValid(hub *Hub, username string) (bool, string) {
 	if hub.usernameExists(username) {
 		return false, "in use"
 	}
+	if usernameProfane(username) {
+		return false, "inappropriate"
+	}
 	return true, ""
+}
+
+func usernameProfane(username string) bool {
+	endpoint := "https://www.purgomalum.com/service/containsprofanity?text=" + url.QueryEscape(username)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		log.Println("error making profanity request:", err)
+		return true
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println("received non-OK response:", resp.Status)
+		return true
+	}
+	hasProfanity, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("error reading profanity response:", err)
+		return true
+	}
+	return string(hasProfanity) == "true"
 }
