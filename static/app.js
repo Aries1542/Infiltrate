@@ -67,10 +67,10 @@ const connectionRefused = (event) => {
 }
 
 const attemptConnection = (username) => {
-    fetch("/namecheck?username=" + username, {method: "POST"})
+    fetch("/namecheck?username=" + encodeURIComponent(username), {method: "POST"})
         .then((response) => {
             if (response.ok) {
-                game.socket = new WebSocket("/ws?username=" + username);
+                game.socket = new WebSocket("/ws?username=" + encodeURIComponent(username));
                 game.socket.onerror = connectionRefused;
                 game.socket.onopen = startGame;
                 game.socket.onmessage = handleMessage;
