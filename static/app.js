@@ -22,11 +22,8 @@ const game = {
     socket: null,
 }
 
-// console.log(two.width, two.height)
-
 const handleMessage = (event) => {
     const {requesting} = JSON.parse(event.data);
-    console.log("Received message: " + requesting);
     switch (requesting) {
         case "setScene":
             const {player, obstacles, items} = JSON.parse(event.data);
@@ -56,41 +53,70 @@ const handleMessage = (event) => {
     }
 };
 
-const onConnection = () => {
+const startGame = () => {
     console.log("Connected to server");
     setInterval(update, 15);
+    document.getElementById("main-menu").remove();
+    two.appendTo(document.body);
     two.play();
 };
 
-const startGame = (username) => {
-    two.appendTo(document.body)
+const connectionRefused = (event) => {
+    game.socket.close();
+    game.socket = null;
+}
 
-    game.grid = drawGrid(clientX, clientY)
-    game.items = two.makeGroup()
-    game.obstacles = two.makeGroup()
-    game.players = two.makeGroup()
-    game.client = drawClient(clientX, clientY)
-    game.ui = drawUI()
-
-    game.socket = new WebSocket("/ws?username=" + username);
-    game.socket.onopen = onConnection;
-    game.socket.onmessage = handleMessage;
-
+const attemptConnection = (username) => {
+    fetch("/namecheck?username=" + encodeURIComponent(username), {method: "POST"})
+        .then((response) => {
+            if (response.ok) {
+                game.socket = new WebSocket("/ws?username=" + encodeURIComponent(username));
+                game.socket.onerror = connectionRefused;
+                game.socket.onopen = startGame;
+                game.socket.onmessage = handleMessage;
+            } else {
+                response.text().then((text) => {
+                    const error = document.getElementById("error");
+                    switch (text.trim()) {
+                        case "username in use":
+                            error.innerHTML = "Sorry, that username is already taken. Please enter a different name";
+                            error.style.display = "block";
+                            break;
+                        case "username has bad length":
+                            error.innerHTML = "Please input a username between 1 and 15 characters";
+                            error.style.display = "block";
+                            break;
+                        case "username is inappropriate":
+                            error.innerHTML = "Please input a username that is appropriate";
+                            error.style.display = "block";
+                            break;
+                        default:
+                            console.log("Unknown response: " + text);
+                    }
+                });
+                return;
+            }
+        })
 }
 
 const onClickPlay = () => {
     const username = document.getElementById("username-field").value.trim() || "";
     if (username === "" || username.length > 15) {
         const error = document.getElementById("error");
-        error.innerHTML = "Sorry, you must input a username between 1 and 15 characters";
+        error.innerHTML = "Please input a username between 1 and 15 characters";
         error.style.display = "block";
         return;
     }
-    document.getElementById("main-menu").remove();
-    startGame(username);
+    attemptConnection(username);
 }
 
 const main = () => {
+    game.grid = drawGrid(clientX, clientY)
+    game.items = two.makeGroup()
+    game.obstacles = two.makeGroup()
+    game.players = two.makeGroup()
+    game.client = drawClient(clientX, clientY)
+    game.ui = drawUI()
     document.getElementById("play-button").onclick = onClickPlay;
 };
 

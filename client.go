@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 )
@@ -144,9 +146,14 @@ func (c *Client) toClient() {
 }
 
 func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	requestedUsername := r.URL.Query().Get("username")
-	log.Println(requestedUsername, "has joined")
-	conn, err := upgrader.Upgrade(w, r, nil) // upgrade the connection to a websocket connection
+	username := r.URL.Query().Get("username")
+	valid, reason := usernameValid(hub, username)
+	if !valid {
+		http.Error(w, reason, http.StatusBadRequest)
+		return
+	}
+	log.Println(username, "has joined")
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade failed: ", err)
 		return
@@ -156,8 +163,53 @@ func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn:     conn,
 		outgoing: make(chan response),
 	}
-	client.hub.incoming <- joinRequest{client: client, username: requestedUsername}
+	client.hub.incoming <- joinRequest{client: client, username: username}
 
 	go client.toClient()
 	go client.fromClient()
+}
+
+func requestUsername(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	valid, reason := usernameValid(hub, username)
+	if !valid {
+		http.Error(w, reason, http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func usernameValid(hub *Hub, username string) (bool, string) {
+	if len(username) < 1 || len(username) > 15 {
+		return false, "username has bad length"
+	}
+	if hub.usernameExists(username) {
+		return false, "username in use"
+	}
+	if usernameProfane(username) {
+		return false, "username is inappropriate"
+	}
+	return true, ""
+}
+
+func usernameProfane(username string) bool {
+	endpoint := "https://www.purgomalum.com/service/containsprofanity?text=" + url.QueryEscape(username)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		log.Println("error making profanity request:", err)
+		return true
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println("received non-OK response:", resp.Status)
+		return true
+	}
+	hasProfanity, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("error reading profanity response:", err)
+		return true
+	}
+	return string(hasProfanity) == "true"
 }
