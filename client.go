@@ -147,9 +147,9 @@ func (c *Client) toClient() {
 
 func connectClient(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
-	valid, _ := usernameValid(hub, username)
+	valid, reason := usernameValid(hub, username)
 	if !valid {
-		http.Error(w, "username not allowed, connection refused", http.StatusBadRequest)
+		http.Error(w, reason, http.StatusBadRequest)
 		return
 	}
 	log.Println(username, "has joined")
@@ -173,30 +173,21 @@ func requestUsername(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	valid, reason := usernameValid(hub, username)
 	if !valid {
-		switch reason {
-		case "bad length":
-			http.Error(w, "username has bad length", http.StatusBadRequest)
-			return
-		case "in use":
-			http.Error(w, "username in use", http.StatusBadRequest)
-			return
-		case "inappropriate":
-			http.Error(w, "username is inappropriate", http.StatusBadRequest)
-			return
-		}
+		http.Error(w, reason, http.StatusBadRequest)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
 func usernameValid(hub *Hub, username string) (bool, string) {
 	if len(username) < 1 || len(username) > 15 {
-		return false, "bad length"
+		return false, "username has bad length"
 	}
 	if hub.usernameExists(username) {
-		return false, "in use"
+		return false, "username in use"
 	}
 	if usernameProfane(username) {
-		return false, "inappropriate"
+		return false, "username is inappropriate"
 	}
 	return true, ""
 }
