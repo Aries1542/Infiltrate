@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"sync"
@@ -38,6 +39,8 @@ type guard struct {
 	X        float32 `json:"x"`
 	Y        float32 `json:"y"`
 	Rotation float32 `json:"rotation"`
+	deltaX   float32
+	deltaY   float32
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -137,6 +140,8 @@ func newHub() *Hub {
 		X:        15,
 		Y:        15,
 		Rotation: 0,
+		deltaX:   0.1,
+		deltaY:   0.1,
 	})
 	if err != nil {
 		log.Println(err)
@@ -194,6 +199,20 @@ func (h *Hub) updateClients() {
 			}
 			h.Unlock()
 		}
+	}
+}
+
+func (h *Hub) moveGuards() {
+	moveTicker := time.NewTicker(15 * time.Millisecond)
+	defer moveTicker.Stop()
+	for range moveTicker.C {
+		h.Lock()
+		for i := range h.guards {
+			h.guards[i].X += h.guards[i].deltaX
+			h.guards[i].Y += h.guards[i].deltaY
+			h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].deltaY), float64(h.guards[i].deltaX)) + 0.5*math.Pi)
+		}
+		h.Unlock()
 	}
 }
 
