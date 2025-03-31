@@ -6,7 +6,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -62,74 +61,6 @@ type item struct {
 	Type string  `json:"type"`
 	X    float32 `json:"x"`
 	Y    float32 `json:"y"`
-}
-
-type request interface {
-	Handle(h *Hub)
-}
-type joinRequest struct {
-	client   *Client
-	username string
-}
-
-func (joining joinRequest) Handle(h *Hub) {
-	h.Lock()
-	client := joining.client
-	h.players[client] = player{
-		Id:       "player" + strconv.Itoa(h.nextID),
-		Username: joining.username,
-		X:        0,
-		Y:        0,
-		Rotation: 0,
-		Score:    0,
-	}
-	h.nextID++
-	h.Unlock()
-
-	client.outgoing <- setSceneResponse{
-		Player:    h.players[client],
-		Obstacles: h.obstacles,
-		Items:     h.items,
-	}
-}
-
-type leaveRequest struct {
-	client *Client
-}
-
-func (leaving leaveRequest) Handle(h *Hub) {
-	leavingClientId := h.players[leaving.client].Id
-	h.Lock()
-	delete(h.players, leaving.client)
-	h.Unlock()
-	close(leaving.client.outgoing)
-	for client := range h.players {
-		client.outgoing <- removeResponse{
-			Type: "player",
-			Id:   leavingClientId,
-		}
-	}
-}
-
-type updateRequest struct {
-	client      *Client
-	X           float32
-	Y           float32
-	Rotation    float32
-	Interaction string
-}
-
-func (updating updateRequest) Handle(h *Hub) {
-	h.Lock()
-	updatingPlayer := h.players[updating.client]
-	updatingPlayer.X = updating.X
-	updatingPlayer.Y = updating.Y
-	updatingPlayer.Rotation = updating.Rotation
-	h.players[updating.client] = updatingPlayer
-	h.Unlock()
-	if updating.Interaction != "" {
-		h.handleInteraction(updating.Interaction, updating.client)
-	}
 }
 
 func newHub() *Hub {

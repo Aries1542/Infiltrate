@@ -36,7 +36,6 @@ const handleMessage = (event) => {
             break;
         case "update":
             const {players, guards} = JSON.parse(event.data);
-            console.log(guards);
             globalToLocalCoords(players, game.players);
             globalToLocalCoords(guards, game.guards);  
             updatePlayers(players);

@@ -20,67 +20,6 @@ type Client struct {
 	outgoing chan response
 }
 
-type response interface {
-	JSONFormat() ([]byte, error)
-}
-
-type setSceneResponse struct {
-	Player    player
-	Obstacles []obstacle
-	Items     []item
-}
-
-func (response setSceneResponse) JSONFormat() ([]byte, error) {
-	jsonMessage, err := json.Marshal(struct {
-		Requesting string     `json:"requesting"`
-		Player     player     `json:"player"`
-		Obstacles  []obstacle `json:"obstacles"`
-		Items      []item     `json:"items"`
-	}{
-		Requesting: "setScene",
-		Player:     response.Player,
-		Obstacles:  response.Obstacles,
-		Items:      response.Items,
-	})
-	return jsonMessage, err
-}
-
-type updateResponse struct {
-	Players []player
-	Guards  []guard
-}
-
-func (response updateResponse) JSONFormat() ([]byte, error) {
-	jsonMessage, err := json.Marshal(struct {
-		Requesting string   `json:"requesting"`
-		Players    []player `json:"players"`
-		Guards     []guard  `json:"guards"`
-	}{
-		Requesting: "update",
-		Players:    response.Players,
-		Guards:     response.Guards,
-	})
-	return jsonMessage, err
-}
-
-type removeResponse struct {
-	Type string
-	Id   string
-}
-
-func (response removeResponse) JSONFormat() ([]byte, error) {
-	jsonMessage, err := json.Marshal(struct {
-		Requesting string `json:"requesting"`
-		Type       string `json:"type"`
-		Id         string `json:"id"`
-	}{
-		Requesting: "remove",
-		Type:       response.Type,
-		Id:         response.Id,
-	})
-	return jsonMessage, err
-}
-
 // fromClient pumps messages from the websocket connection to the hub.
 func (c *Client) fromClient() {
 	defer func() {
