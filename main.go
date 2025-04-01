@@ -9,8 +9,8 @@ func main() {
 
 	hub := newHub()
 	go hub.handleMessages()
-	go hub.updateClients()
-	go hub.moveGuards()
+	go hub.update()
+	go hub.handleGuardAI()
 
 	http.Handle("/", http.FileServer(http.Dir("static"))) // serve the static directory to the client
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

@@ -38,8 +38,7 @@ type guard struct {
 	X        float32 `json:"x"`
 	Y        float32 `json:"y"`
 	Rotation float32 `json:"rotation"`
-	deltaX   float32
-	deltaY   float32
+	actions  []action
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -68,11 +67,10 @@ func newHub() *Hub {
 	guards := make([]guard, 0)
 	guards = append(guards, guard{
 		Id:       "guard1",
-		X:        15,
-		Y:        15,
+		X:        -100,
+		Y:        -300,
 		Rotation: 0,
-		deltaX:   0.1,
-		deltaY:   0.1,
+		actions:  make([]action, 0),
 	})
 	if err != nil {
 		log.Println(err)
@@ -94,8 +92,9 @@ func (h *Hub) handleMessages() {
 	}
 }
 
-func (h *Hub) updateClients() {
+func (h *Hub) update() {
 	updateTicker := time.NewTicker(10 * time.Millisecond)
+	moveTicker := time.NewTicker(15 * time.Millisecond)
 	coinSpawnTicker := time.NewTicker(2 * time.Minute)
 	for {
 		select {
@@ -109,6 +108,19 @@ func (h *Hub) updateClients() {
 				receivingClient.outgoing <- updateResponse{Players: players, Guards: h.guards}
 			}
 			h.RUnlock()
+		case <-moveTicker.C:
+			h.Lock()
+			for i := range h.guards {
+				if len(h.guards[i].actions) == 0 {
+					continue
+				}
+				last := len(h.guards[i].actions) - 1
+				h.guards[i].X += h.guards[i].actions[last].deltaX
+				h.guards[i].Y += h.guards[i].actions[last].deltaY
+				h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
+				h.guards[i].actions = h.guards[i].actions[:last]
+			}
+			h.Unlock()
 		case <-coinSpawnTicker.C:
 			h.Lock()
 			content, err := os.ReadFile("./mapData.json")
@@ -133,17 +145,13 @@ func (h *Hub) updateClients() {
 	}
 }
 
-func (h *Hub) moveGuards() {
-	moveTicker := time.NewTicker(15 * time.Millisecond)
-	defer moveTicker.Stop()
-	for range moveTicker.C {
-		h.Lock()
+func (h *Hub) handleGuardAI() {
+	GuardAI := NewGuardAI(h.obstacles)
+	for {
 		for i := range h.guards {
-			h.guards[i].X += h.guards[i].deltaX
-			h.guards[i].Y += h.guards[i].deltaY
-			h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].deltaY), float64(h.guards[i].deltaX)) + 0.5*math.Pi)
+			newActions := GuardAI.GetGuardActions(state{x: h.guards[i].X, y: h.guards[i].Y}, state{x: 100, y: 300})
+			h.guards[i].actions = newActions
 		}
-		h.Unlock()
 	}
 }
 
