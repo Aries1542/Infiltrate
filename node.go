@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type action struct {
 	deltaX float32
 	deltaY float32
@@ -10,8 +12,8 @@ type state struct {
 	y float32
 }
 
-func (s state) sqDistanceTo(other state) float32 {
-	return (s.x-other.x)*(s.x-other.x) + (s.y-other.y)*(s.y-other.y)
+func (s state) mnhtDistanceTo(other state) float32 {
+	return float32(math.Abs(float64(s.x-other.x)) + math.Abs(float64(s.y-other.y)))
 }
 
 type node struct {

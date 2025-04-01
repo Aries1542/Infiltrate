@@ -39,6 +39,7 @@ type guard struct {
 	Y        float32 `json:"y"`
 	Rotation float32 `json:"rotation"`
 	actions  []action
+	goal     state
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -68,9 +69,10 @@ func newHub() *Hub {
 	guards = append(guards, guard{
 		Id:       "guard1",
 		X:        -100,
-		Y:        -300,
+		Y:        -160,
 		Rotation: 0,
 		actions:  make([]action, 0),
+		goal:     state{x: 0, y: 0},
 	})
 	if err != nil {
 		log.Println(err)
@@ -94,7 +96,7 @@ func (h *Hub) handleMessages() {
 
 func (h *Hub) update() {
 	updateTicker := time.NewTicker(10 * time.Millisecond)
-	moveTicker := time.NewTicker(15 * time.Millisecond)
+	moveTicker := time.NewTicker(300 * time.Millisecond)
 	coinSpawnTicker := time.NewTicker(2 * time.Minute)
 	for {
 		select {
@@ -115,10 +117,12 @@ func (h *Hub) update() {
 					continue
 				}
 				last := len(h.guards[i].actions) - 1
+				log.Println("moved from ", h.guards[i].X, h.guards[i].Y)
 				h.guards[i].X += h.guards[i].actions[last].deltaX
 				h.guards[i].Y += h.guards[i].actions[last].deltaY
 				h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
 				h.guards[i].actions = h.guards[i].actions[:last]
+				log.Println("to ", h.guards[i].X, h.guards[i].Y)
 			}
 			h.Unlock()
 		case <-coinSpawnTicker.C:
@@ -149,7 +153,11 @@ func (h *Hub) handleGuardAI() {
 	GuardAI := NewGuardAI(h.obstacles)
 	for {
 		for i := range h.guards {
-			newActions := GuardAI.GetGuardActions(state{x: h.guards[i].X, y: h.guards[i].Y}, state{x: 100, y: 300})
+			// if len(h.guards[i].actions) != 0 {
+			// 	continue
+			// }
+			newActions := GuardAI.GetGuardActions(state{x: h.guards[i].X, y: h.guards[i].Y}, h.guards[i].goal)
+			// log.Println(newActions)
 			h.guards[i].actions = newActions
 		}
 	}

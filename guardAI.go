@@ -32,12 +32,14 @@ func aStar(state0 state, goal_state state, m infiltrateModel) []action {
 		action:         action{},
 		depth:          0,
 		cost:           0,
-		estimated_cost: state0.sqDistanceTo(goal_state),
+		estimated_cost: state0.mnhtDistanceTo(goal_state),
 	}
 	pq := make(PriorityQueue, 0)
 	pq = append(pq, &node0)
 	for pq.Len() != 0 {
+		// log.Println("pq.Len() != 0")
 		current := heap.Pop(&pq).(*node)
+		// log.Println("depth: ", current.depth)
 
 		if stored_states[current.state] {
 			continue
@@ -48,11 +50,12 @@ func aStar(state0 state, goal_state state, m infiltrateModel) []action {
 			break
 		}
 
-		if math.Abs(float64(current.state.sqDistanceTo(goal_state))) < float64(skip) {
+		if math.Abs(float64(current.state.mnhtDistanceTo(goal_state))) < float64(2*skip) {
 			goal_node = current
 			break
 		}
 		for _, action := range m.actions(current.state) {
+			// log.Println("_, action := range m.actions(current.state)")
 			result_state := m.result(current.state, action)
 			result_cost := m.step_cost(current.state, action, result_state) + current.cost
 			result_hueristic := m.heuristic(result_state, goal_state)
@@ -68,6 +71,7 @@ func aStar(state0 state, goal_state state, m infiltrateModel) []action {
 		}
 	}
 	if goal_node == nil {
+		log.Println("No path found")
 		return nil
 	}
 	return goal_node.create_action_sequence()
