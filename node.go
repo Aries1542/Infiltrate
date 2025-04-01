@@ -30,7 +30,14 @@ func (current node) create_action_sequence() []action {
 	if current.parent == nil {
 		return []action{}
 	} else {
-		return append(current.parent.create_action_sequence(), action{current.action.deltaX / skip, current.action.deltaY / skip})
+		actions := []action{}
+		for range skipFactor {
+			actions = append(actions, action{
+				deltaX: current.action.deltaX / skipFactor,
+				deltaY: current.action.deltaY / skipFactor,
+			})
+		}
+		return append(actions, current.parent.create_action_sequence()...)
 	}
 }
 

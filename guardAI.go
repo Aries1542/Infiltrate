@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"log"
 	"math"
+	"time"
 )
 
 type GuardAI struct {
@@ -24,6 +25,7 @@ func (g *GuardAI) GetGuardActions(s state, gs state) []action {
 }
 
 func aStar(state0 state, goal_state state, m infiltrateModel) []action {
+	var startTime = time.Now()
 	var goal_node *node = nil
 	stored_states := make(map[state]bool)
 	node0 := node{
@@ -37,25 +39,26 @@ func aStar(state0 state, goal_state state, m infiltrateModel) []action {
 	pq := make(PriorityQueue, 0)
 	pq = append(pq, &node0)
 	for pq.Len() != 0 {
-		// log.Println("pq.Len() != 0")
 		current := heap.Pop(&pq).(*node)
-		// log.Println("depth: ", current.depth)
 
 		if stored_states[current.state] {
 			continue
 		}
 		stored_states[current.state] = true
-		if current.depth > 400 {
+		if current.depth > 150 {
 			log.Println("Depth limit reached")
 			break
 		}
+		if time.Since(startTime).Seconds() > 1 {
+			log.Println("Time limit reached")
+			break
+		}
 
-		if math.Abs(float64(current.state.mnhtDistanceTo(goal_state))) < float64(2*skip) {
+		if math.Abs(float64(current.state.mnhtDistanceTo(goal_state))) < float64(skipFactor) {
 			goal_node = current
 			break
 		}
 		for _, action := range m.actions(current.state) {
-			// log.Println("_, action := range m.actions(current.state)")
 			result_state := m.result(current.state, action)
 			result_cost := m.step_cost(current.state, action, result_state) + current.cost
 			result_hueristic := m.heuristic(result_state, goal_state)

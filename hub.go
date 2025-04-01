@@ -66,14 +66,6 @@ type item struct {
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
 	guards := make([]guard, 0)
-	guards = append(guards, guard{
-		Id:       "guard1",
-		X:        -100,
-		Y:        -160,
-		Rotation: 0,
-		actions:  make([]action, 0),
-		goal:     state{x: 0, y: 0},
-	})
 	if err != nil {
 		log.Println(err)
 	}
@@ -96,7 +88,7 @@ func (h *Hub) handleMessages() {
 
 func (h *Hub) update() {
 	updateTicker := time.NewTicker(10 * time.Millisecond)
-	moveTicker := time.NewTicker(300 * time.Millisecond)
+	moveTicker := time.NewTicker(20 * time.Millisecond)
 	coinSpawnTicker := time.NewTicker(2 * time.Minute)
 	for {
 		select {
@@ -117,12 +109,10 @@ func (h *Hub) update() {
 					continue
 				}
 				last := len(h.guards[i].actions) - 1
-				log.Println("moved from ", h.guards[i].X, h.guards[i].Y)
 				h.guards[i].X += h.guards[i].actions[last].deltaX
 				h.guards[i].Y += h.guards[i].actions[last].deltaY
 				h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
 				h.guards[i].actions = h.guards[i].actions[:last]
-				log.Println("to ", h.guards[i].X, h.guards[i].Y)
 			}
 			h.Unlock()
 		case <-coinSpawnTicker.C:
@@ -150,15 +140,14 @@ func (h *Hub) update() {
 }
 
 func (h *Hub) handleGuardAI() {
+	thinkTicker := time.NewTicker(500 * time.Millisecond)
 	GuardAI := NewGuardAI(h.obstacles)
-	for {
+	for range thinkTicker.C {
 		for i := range h.guards {
-			// if len(h.guards[i].actions) != 0 {
-			// 	continue
-			// }
 			newActions := GuardAI.GetGuardActions(state{x: h.guards[i].X, y: h.guards[i].Y}, h.guards[i].goal)
-			// log.Println(newActions)
+			h.Lock()
 			h.guards[i].actions = newActions
+			h.Unlock()
 		}
 	}
 }
