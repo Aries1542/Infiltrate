@@ -34,12 +34,14 @@ type player struct {
 }
 
 type guard struct {
-	Id       string  `json:"id"`
-	X        float32 `json:"x"`
-	Y        float32 `json:"y"`
-	Rotation float32 `json:"rotation"`
-	actions  []action
-	goal     state
+	Id           string  `json:"id"`
+	X            float32 `json:"x"`
+	Y            float32 `json:"y"`
+	Rotation     float32 `json:"rotation"`
+	actions      []action
+	goal         state
+	patrolPoints []state
+	currentPoint int
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -65,10 +67,25 @@ type item struct {
 
 func newHub() *Hub {
 	obstacles, items, err := readObstacles()
-	guards := make([]guard, 0)
 	if err != nil {
 		log.Println(err)
 	}
+	guards := make([]guard, 0)
+	guards = append(guards, guard{
+		Id:           "guard1",
+		X:            -13 * 20,
+		Y:            -15 * 20,
+		Rotation:     0,
+		actions:      make([]action, 0),
+		goal:         state{x: 0, y: 0},
+		patrolPoints: make([]state, 0),
+	})
+	// guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -100, y: -200})
+	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -13 * 20, y: -15 * 20})
+	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -4 * 20, y: -2 * 20})
+	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -5 * 20, y: 12 * 20})
+	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -4 * 20, y: -2 * 20})
+	guards[0].goal = guards[0].patrolPoints[0]
 	return &Hub{
 		incoming:  make(chan request),
 		nextID:    1,
@@ -140,14 +157,18 @@ func (h *Hub) update() {
 }
 
 func (h *Hub) handleGuardAI() {
-	thinkTicker := time.NewTicker(500 * time.Millisecond)
-	GuardAI := NewGuardAI(h.obstacles)
+	thinkTicker := time.NewTicker(200 * time.Millisecond)
+	model := model{
+		obstacles: h.obstacles,
+	}
 	for range thinkTicker.C {
 		for i := range h.guards {
-			newActions := GuardAI.GetGuardActions(state{x: h.guards[i].X, y: h.guards[i].Y}, h.guards[i].goal)
-			h.Lock()
-			h.guards[i].actions = newActions
-			h.Unlock()
+			if len(h.guards[i].actions) == 0 {
+				actions := think(&h.guards[i], model)
+				h.Lock()
+				h.guards[i].actions = actions
+				h.Unlock()
+			}
 		}
 	}
 }

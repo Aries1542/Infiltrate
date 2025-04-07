@@ -1,20 +1,18 @@
 package main
 
-const skipFactor = 3
+const skipFactor = 10
 const guardSpeed = 2
 
-type infiltrateModel struct {
+type model struct {
 	obstacles []obstacle
 }
 
-func (m *infiltrateModel) actions(s state) []action {
+func (m *model) actions(s state) []action {
 	actions := make([]action, 0)
 	var x float32
 	var y float32
 	for x = -1; x <= 1; x++ {
-		// log.Println("x = -1; x <= 1; x++")
 		for y = -1; y <= 1; y++ {
-			// log.Println("y = -1; y <= 1; y++")
 			deltaX := x * guardSpeed * skipFactor
 			deltaY := y * guardSpeed * skipFactor
 			if x != 0 && y != 0 {
@@ -30,7 +28,7 @@ func (m *infiltrateModel) actions(s state) []action {
 	return actions
 }
 
-func (m *infiltrateModel) isValid(s state) bool {
+func (m *model) isValid(s state) bool {
 	guardRadius := float32(25)
 	for _, obs := range m.obstacles {
 		closestX := max(obs.X, min(s.x, obs.X+obs.Width))
@@ -44,17 +42,18 @@ func (m *infiltrateModel) isValid(s state) bool {
 	return true
 }
 
-func (m *infiltrateModel) result(s state, a action) state {
+func (m *model) result(s state, a action) state {
 	return state{
 		x: s.x + a.deltaX,
 		y: s.y + a.deltaY,
 	}
 }
 
-func (m *infiltrateModel) step_cost(s state, a action, rs state) float32 {
+func (m *model) step_cost(s state, a action, rs state) float32 {
+	_, _, _ = s, a, rs
 	return 2
 }
 
-func (m *infiltrateModel) heuristic(s state, gs state) float32 {
-	return s.mnhtDistanceTo(gs)
+func (m *model) heuristic(s state, gs state) float32 {
+	return s.distanceTo(gs)
 }
