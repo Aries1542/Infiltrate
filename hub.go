@@ -38,6 +38,7 @@ type guard struct {
 	X            float32 `json:"x"`
 	Y            float32 `json:"y"`
 	Rotation     float32 `json:"rotation"`
+	Searching    bool    `json:"searching"`
 	actions      []action
 	goal         state
 	patrolPoints []state
@@ -193,6 +194,7 @@ func readWorldData() ([]obstacle, []item, []guard, error) {
 			X:            mapData.Guards[i].X,
 			Y:            mapData.Guards[i].Y,
 			Rotation:     mapData.Guards[i].Rotation,
+			Searching:    true,
 			actions:      make([]action, 0),
 			goal:         state{x: mapData.Guards[i].X, y: mapData.Guards[i].Y},
 			patrolPoints: make([]state, 0),
