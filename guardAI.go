@@ -29,7 +29,7 @@ func aStar(state0 state, goal_state state, m model) []action {
 	var startTime = time.Now()
 	var goal_node *node = nil
 	stored_states := make(map[state]bool)
-	node0 := node{
+	node0 := &node{
 		state:          state0,
 		parent:         nil,
 		action:         action{},
@@ -38,7 +38,7 @@ func aStar(state0 state, goal_state state, m model) []action {
 		estimated_cost: m.heuristic(state0, goal_state),
 	}
 	pq := make(PriorityQueue, 0)
-	pq = append(pq, &node0)
+	heap.Push(&pq, node0)
 	for pq.Len() != 0 {
 		current := heap.Pop(&pq).(*node)
 
