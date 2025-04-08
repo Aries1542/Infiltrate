@@ -66,26 +66,10 @@ type item struct {
 }
 
 func newHub() *Hub {
-	obstacles, items, err := readObstacles()
+	obstacles, items, guards, err := readWorldData()
 	if err != nil {
 		log.Println(err)
 	}
-	guards := make([]guard, 0)
-	guards = append(guards, guard{
-		Id:           "guard1",
-		X:            -13 * 20,
-		Y:            -15 * 20,
-		Rotation:     0,
-		actions:      make([]action, 0),
-		goal:         state{x: 0, y: 0},
-		patrolPoints: make([]state, 0),
-	})
-	// guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -100, y: -200})
-	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -13 * 20, y: -15 * 20})
-	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -4 * 20, y: -2 * 20})
-	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -5 * 20, y: 12 * 20})
-	guards[0].patrolPoints = append(guards[0].patrolPoints, state{x: -4 * 20, y: -2 * 20})
-	guards[0].goal = guards[0].patrolPoints[0]
 	return &Hub{
 		incoming:  make(chan request),
 		nextID:    1,
@@ -173,7 +157,7 @@ func (h *Hub) handleGuardAI() {
 	}
 }
 
-func readObstacles() ([]obstacle, []item, error) {
+func readWorldData() ([]obstacle, []item, []guard, error) {
 	content, err := os.ReadFile("./mapData.json")
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
@@ -181,16 +165,47 @@ func readObstacles() ([]obstacle, []item, error) {
 	mapData := struct {
 		Obstacles []obstacle
 		Items     []item
+		Guards    []struct {
+			Id           string  `json:"id"`
+			X            float32 `json:"x"`
+			Y            float32 `json:"y"`
+			Rotation     float32 `json:"rotation"`
+			PatrolPoints []struct {
+				X float32 `json:"x"`
+				Y float32 `json:"y"`
+			}
+		}
 	}{}
 
 	err = json.Unmarshal(content, &mapData)
 	if err != nil {
 		obstacles := make([]obstacle, 0)
 		items := make([]item, 0)
+		guards := make([]guard, 0)
 		log.Println(err)
-		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
+		return obstacles, items, guards, errors.New("could not read file data, continuing with empty world")
 	}
-	return mapData.Obstacles, mapData.Items, nil
+
+	guards := make([]guard, len(mapData.Guards))
+	for i := range mapData.Guards {
+		guards[i] = guard{
+			Id:           mapData.Guards[i].Id,
+			X:            mapData.Guards[i].X,
+			Y:            mapData.Guards[i].Y,
+			Rotation:     mapData.Guards[i].Rotation,
+			actions:      make([]action, 0),
+			goal:         state{x: mapData.Guards[i].X, y: mapData.Guards[i].Y},
+			patrolPoints: make([]state, 0),
+			currentPoint: 0,
+		}
+		for j := range mapData.Guards[i].PatrolPoints {
+			guards[i].patrolPoints = append(guards[i].patrolPoints, state{
+				x: mapData.Guards[i].PatrolPoints[j].X,
+				y: mapData.Guards[i].PatrolPoints[j].Y,
+			})
+		}
+	}
+	return mapData.Obstacles, mapData.Items, guards, nil
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {

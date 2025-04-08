@@ -1,6 +1,6 @@
 package main
 
-const skipFactor = 10
+const skipFactor = 8
 const guardSpeed = 2
 
 type model struct {
