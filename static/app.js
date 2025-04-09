@@ -177,7 +177,8 @@ const update = () => {
     game.clientGlobalPos.y += delta.y;
     game.client.rotation = Math.atan2(game.mouse.y - clientY, game.mouse.x - clientX) + .5*Math.PI;
 
-    const id = updateItems();
+    const itemId = updateItems();
+    const guardId = detected();
 
     if (game.socket.readyState !== game.socket.OPEN) return;
     game.socket.send(JSON.stringify({
@@ -185,7 +186,7 @@ const update = () => {
         X: game.clientGlobalPos.x,
         Y: game.clientGlobalPos.y,
         Rotation: game.client.rotation,
-        Interaction: id,
+        Interaction: itemId || guardId || "",
     }));
 };
 
@@ -209,6 +210,71 @@ const collideDelta = (delta) => {
         }
     }
     return delta
+}
+
+const detected = () => {
+    for (const guard of game.guards.children) {
+        if (guard.id === "") continue;
+        const detectedId = detectedBy(guard);
+        if (detectedId) return detectedId;
+    }
+    return "";
+}
+
+const detectedBy = (guard) => {
+    let x = 0
+    let y = 0
+    if ((guard.rotation).toFixed(4) == (0).toFixed(4)) {
+        // North
+        y = -1
+    } else if ((guard.rotation).toFixed(4) == (Math.PI/4).toFixed(4)) {
+        // NorthEast
+        x = .70710678 // sqrt(1/2)
+        y = -.70710678
+    } else if ((guard.rotation).toFixed(4) == (Math.PI/2).toFixed(4)) {
+        // East
+        x = 1
+    } else if ((guard.rotation).toFixed(4) == (3*Math.PI/4).toFixed(4)) {
+        // SouthEast
+        x = .70710678 
+        y = .70710678
+    } else if ((guard.rotation).toFixed(4) == (Math.PI).toFixed(4)) {
+        // South
+        y = 1
+    } else if ((guard.rotation).toFixed(4) == (5*Math.PI/4).toFixed(4)) {
+        // SouthWest
+        x = -.70710678 
+        y = .70710678
+    } else if ((guard.rotation).toFixed(4) == (3*Math.PI/2).toFixed(4)) {
+        // West
+        x = -1
+    } else if ((guard.rotation).toFixed(4) == (-Math.PI/4).toFixed(4)) {
+        // NorthWest
+        x = -.70710678
+        y = -.70710678
+    } else {
+        console.log("not cardinal " + guard.rotation);
+    }
+    const coneLength = 180
+    const guardX = game.guards.position.x + guard.position.x
+    const guardY = game.guards.position.y + guard.position.y
+
+    let xLow = guardX - 70
+    let xHigh = guardX + 70
+    let yLow = guardY - 70
+    let yHigh = guardY + 70
+    if (x) {
+        xLow = Math.min(guardX+(x*coneLength), guardX)
+        xHigh = Math.max(guardX+(x*coneLength), guardX)
+    }
+    if (y) {
+        yLow = Math.min(guardY+(y*coneLength), guardY)
+        yHigh = Math.max(guardY+(y*coneLength), guardY)
+    }
+    if (xLow > clientX || xHigh < clientX) return ""
+    if (yLow > clientY || yHigh < clientY) return ""
+
+    return guard.id
 }
 
 const updateItems = () => {
