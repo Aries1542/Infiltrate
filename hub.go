@@ -17,7 +17,7 @@ type Hub struct {
 	sync.RWMutex
 	incoming  chan request
 	nextID    int
-	players   map[*Client]player
+	players   map[*Client]*player
 	guards    []guard
 	obstacles []obstacle
 	items     []item
@@ -43,6 +43,7 @@ type guard struct {
 	goal         state
 	patrolPoints []state
 	currentPoint int
+	chasing      *player
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -74,7 +75,7 @@ func newHub() *Hub {
 	return &Hub{
 		incoming:  make(chan request),
 		nextID:    1,
-		players:   make(map[*Client]player),
+		players:   make(map[*Client]*player),
 		guards:    guards,
 		obstacles: obstacles,
 		items:     items,
@@ -98,7 +99,7 @@ func (h *Hub) update() {
 			players := make([]player, 0)
 			h.RLock()
 			for client := range h.players {
-				players = append(players, h.players[client])
+				players = append(players, *h.players[client])
 			}
 			for receivingClient := range h.players {
 				receivingClient.outgoing <- updateResponse{Players: players, Guards: h.guards}
@@ -199,6 +200,7 @@ func readWorldData() ([]obstacle, []item, []guard, error) {
 			goal:         state{x: mapData.Guards[i].X, y: mapData.Guards[i].Y},
 			patrolPoints: make([]state, 0),
 			currentPoint: 0,
+			chasing:      nil,
 		}
 		for j := range mapData.Guards[i].PatrolPoints {
 			guards[i].patrolPoints = append(guards[i].patrolPoints, state{
@@ -208,6 +210,32 @@ func readWorldData() ([]obstacle, []item, []guard, error) {
 		}
 	}
 	return mapData.Obstacles, mapData.Items, guards, nil
+}
+
+func (h *Hub) handleDetection(guardId string, client *Client) {
+	detected := -1
+	h.RLock()
+	for guardIndex := range h.guards {
+		if h.guards[guardIndex].Id == guardId {
+			detected = guardIndex
+			break
+		}
+	}
+	h.RUnlock()
+	if detected == -1 {
+		log.Println("detection requested with invalid id: ", guardId)
+		return
+	}
+	h.Lock()
+	h.guards[detected].Searching = false
+	h.guards[detected].chasing = h.players[client]
+	h.guards[detected].goal = state{
+		x: h.players[client].X,
+		y: h.players[client].Y,
+	}
+	h.guards[detected].actions = make([]action, 0)
+	h.Unlock()
+
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {

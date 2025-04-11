@@ -186,7 +186,8 @@ const update = () => {
         X: game.clientGlobalPos.x,
         Y: game.clientGlobalPos.y,
         Rotation: game.client.rotation,
-        Interaction: itemId || guardId || "",
+        Interaction: itemId || "",
+        DetectedBy: guardId || "",
     }));
 };
 
@@ -222,6 +223,7 @@ const detected = () => {
 }
 
 const detectedBy = (guard) => {
+    if (!guard.children.ids["searchCone"].visible) return "";
     let x = 0
     let y = 0
     if ((guard.rotation).toFixed(4) == (0).toFixed(4)) {

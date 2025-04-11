@@ -8,9 +8,14 @@ import (
 )
 
 func think(g *guard, m model) []action {
-	if goalReached(g) {
+	if g.chasing == nil && goalReached(g) {
 		g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
 		g.goal = g.patrolPoints[g.currentPoint]
+	} else if g.chasing != nil {
+		g.goal = state{
+			x: g.chasing.X,
+			y: g.chasing.Y,
+		}
 	}
 	currentState := state{
 		x: g.X,

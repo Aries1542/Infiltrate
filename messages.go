@@ -17,7 +17,7 @@ type joinRequest struct {
 func (joining joinRequest) Handle(h *Hub) {
 	h.Lock()
 	client := joining.client
-	h.players[client] = player{
+	h.players[client] = &player{
 		Id:       "player" + strconv.Itoa(h.nextID),
 		Username: joining.username,
 		X:        0,
@@ -29,7 +29,7 @@ func (joining joinRequest) Handle(h *Hub) {
 	h.Unlock()
 
 	client.outgoing <- setSceneResponse{
-		Player:    h.players[client],
+		Player:    *h.players[client],
 		Obstacles: h.obstacles,
 		Items:     h.items,
 	}
@@ -59,6 +59,7 @@ type updateRequest struct {
 	Y           float32
 	Rotation    float32
 	Interaction string
+	DetectedBy  string
 }
 
 func (updating updateRequest) Handle(h *Hub) {
@@ -71,6 +72,9 @@ func (updating updateRequest) Handle(h *Hub) {
 	h.Unlock()
 	if updating.Interaction != "" {
 		h.handleInteraction(updating.Interaction, updating.client)
+	}
+	if updating.DetectedBy != "" {
+		h.handleDetection(updating.DetectedBy, updating.client)
 	}
 }
 
