@@ -90,6 +90,10 @@ func (h *Hub) handleMessages() {
 }
 
 func (h *Hub) update() {
+	m := model{
+		obstacles: h.obstacles,
+	}
+
 	updateTicker := time.NewTicker(10 * time.Millisecond)
 	moveTicker := time.NewTicker(20 * time.Millisecond)
 	coinSpawnTicker := time.NewTicker(2 * time.Minute)
@@ -112,9 +116,14 @@ func (h *Hub) update() {
 					continue
 				}
 				last := len(h.guards[i].actions) - 1
-				h.guards[i].X += h.guards[i].actions[last].deltaX
-				h.guards[i].Y += h.guards[i].actions[last].deltaY
-				h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
+
+				newX := h.guards[i].X + h.guards[i].actions[last].deltaX
+				newY := h.guards[i].Y + h.guards[i].actions[last].deltaY
+				if m.isValid(state{x: newX, y: newY}) {
+					h.guards[i].X = newX
+					h.guards[i].Y = newY
+					h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
+				}
 				h.guards[i].actions = h.guards[i].actions[:last]
 			}
 			h.Unlock()
@@ -149,7 +158,7 @@ func (h *Hub) handleGuardAI() {
 	}
 	for range thinkTicker.C {
 		for i := range h.guards {
-			if len(h.guards[i].actions) == 0 {
+			if !h.guards[i].Searching || len(h.guards[i].actions) == 0 {
 				actions := think(&h.guards[i], model)
 				h.Lock()
 				h.guards[i].actions = actions
