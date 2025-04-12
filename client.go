@@ -140,18 +140,18 @@ func usernameProfane(username string) bool {
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		log.Println("error making profanity request:", err)
-		return true
+		return false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Println("received non-OK response:", resp.Status)
-		return true
+		return false
 	}
 	hasProfanity, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("error reading profanity response:", err)
-		return true
+		return false
 	}
 	return string(hasProfanity) == "true"
 }
