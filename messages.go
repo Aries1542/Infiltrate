@@ -109,14 +109,25 @@ type updateResponse struct {
 }
 
 func (response updateResponse) JSONFormat() ([]byte, error) {
+	type clientGuardFormat = struct {
+		guard
+		Aggro bool `json:"aggro"`
+	}
+	guards := make([]clientGuardFormat, 0)
+	for i := range response.Guards {
+		guards = append(guards, clientGuardFormat{
+			guard: response.Guards[i],
+			Aggro: response.Guards[i].chasing != nil,
+		})
+	}
 	jsonMessage, err := json.Marshal(struct {
-		Requesting string   `json:"requesting"`
-		Players    []player `json:"players"`
-		Guards     []guard  `json:"guards"`
+		Requesting string              `json:"requesting"`
+		Players    []player            `json:"players"`
+		Guards     []clientGuardFormat `json:"guards"`
 	}{
 		Requesting: "update",
 		Players:    response.Players,
-		Guards:     response.Guards,
+		Guards:     guards,
 	})
 	return jsonMessage, err
 }

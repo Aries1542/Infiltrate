@@ -1,6 +1,6 @@
 package main
 
-const skipFactor = 8
+const skipFactor = 12
 const guardSpeed = 2
 
 type model struct {
@@ -13,16 +13,24 @@ func (m *model) actions(s state) []action {
 	var y float32
 	for x = -1; x <= 1; x++ {
 		for y = -1; y <= 1; y++ {
-			deltaX := x * guardSpeed * skipFactor
-			deltaY := y * guardSpeed * skipFactor
+			deltaX := x * guardSpeed
+			deltaY := y * guardSpeed
 			if x != 0 && y != 0 {
 				deltaX *= .70710678
 				deltaY *= .70710678
 			}
-			newAction := action{deltaX: deltaX, deltaY: deltaY}
-			if m.isValid(m.result(s, newAction)) {
-				actions = append(actions, newAction)
+			valid := true
+			for i := range skipFactor {
+				newAction := action{deltaX: deltaX * float32(i), deltaY: deltaY * float32(i)}
+				if !m.isValid(m.result(s, newAction)) {
+					valid = false
+					break
+				}
 			}
+			if !valid {
+				continue
+			}
+			actions = append(actions, action{deltaX: deltaX * skipFactor, deltaY: deltaY * skipFactor})
 		}
 	}
 	return actions
@@ -51,7 +59,7 @@ func (m *model) result(s state, a action) state {
 
 func (m *model) step_cost(s state, a action, rs state) float32 {
 	_, _, _ = s, a, rs
-	return 2
+	return guardSpeed * skipFactor
 }
 
 func (m *model) heuristic(s state, gs state) float32 {

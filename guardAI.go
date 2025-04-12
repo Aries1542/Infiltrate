@@ -8,13 +8,21 @@ import (
 )
 
 func think(g *guard, m model) []action {
-	if g.chasing == nil && goalReached(g) {
-		g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
-		g.goal = g.patrolPoints[g.currentPoint]
-	} else if g.chasing != nil {
+	if g.chasing == nil { // Guard is patrolling
+		if goalReached(g) {
+			g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
+			g.goal = g.patrolPoints[g.currentPoint]
+		}
+	} else if canSee(g, g.chasing, m) { // Guard is in pursuit
+		g.Searching = false
 		g.goal = state{
 			x: g.chasing.X,
 			y: g.chasing.Y,
+		}
+	} else { // Guard is in pursuit but has lost sight
+		g.Searching = true
+		if goalReached(g) {
+			g.chasing = nil
 		}
 	}
 	currentState := state{
@@ -28,6 +36,25 @@ func think(g *guard, m model) []action {
 func goalReached(g *guard) bool {
 	leniency := float32(guardSpeed * skipFactor)
 	return (g.X-g.goal.x)*(g.X-g.goal.x)+(g.Y-g.goal.y)*(g.Y-g.goal.y) < leniency*leniency
+}
+
+func canSee(g *guard, p *player, m model) bool {
+	x1, y1, x2, y2 := g.X, g.Y, p.X, p.Y
+	if x1 > x2 {
+		x1, y1, x2, y2 = x2, y2, x1, y1
+	}
+	slope := (y2 - y1) / (x2 - x1)
+
+	for x := x1; x <= x2; x += 20 {
+		y := (slope * x) + y1
+		for _, obs := range m.obstacles {
+			if obs.X < x && obs.X+obs.Width > x && obs.Y < y && obs.Y+obs.Height > y {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func aStar(state0 state, goal_state state, m model) []action {
@@ -53,11 +80,11 @@ func aStar(state0 state, goal_state state, m model) []action {
 		stored_states[current.state] = true
 		if current.depth > 150 {
 			log.Println("Depth limit reached")
-			break
+			return nil
 		}
 		if time.Since(startTime).Seconds() > 2 {
 			log.Println("Time limit reached")
-			break
+			return nil
 		}
 
 		if math.Abs(float64(current.state.distanceTo(goal_state))) < float64(skipFactor*guardSpeed) {
