@@ -5,11 +5,13 @@ import (
 	"errors"
 	"log"
 	"math"
+	"math/rand/v2"
 	"time"
 )
 
 func think(g *guard, m model) []action {
 	if g.chasing == nil { // Guard is patrolling
+		g.Searching = true
 		if goalReached(g) {
 			g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
 			g.goal = g.patrolPoints[g.currentPoint]
@@ -31,9 +33,37 @@ func think(g *guard, m model) []action {
 		y: g.Y,
 	}
 	actions, err := aStar(currentState, g.goal, m)
+	lost := false
 	if err != nil {
-		log.Println("Error in A* search:", err)
-		return make([]action, 0)
+		g.cantFind++
+		if time.Since(g.lastTimeNotLost) > 1*time.Minute {
+			g.currentPoint = 0
+			g.goal = g.patrolPoints[0]
+			g.X = g.patrolPoints[0].x
+			g.Y = g.patrolPoints[0].y
+			log.Println("Guard fully lost, returning to origin")
+		} else if g.cantFind > len(g.patrolPoints) {
+			lost = true
+			g.currentPoint = closestPatrolPoint(g)
+			xDist := g.patrolPoints[g.currentPoint].x - g.X
+			yDist := g.patrolPoints[g.currentPoint].y - g.Y
+			g.goal = state{
+				x: (g.X + rand.Float32()*xDist) + (rand.Float32()*xDist/4 - xDist/8),
+				y: (g.Y + rand.Float32()*yDist) + (rand.Float32()*yDist/4 - yDist/8),
+			}
+			log.Println("All patrol points out of reach, attempting random nav back: ", g.goal)
+		} else {
+			g.chasing = nil
+			g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
+			g.goal = g.patrolPoints[g.currentPoint]
+			log.Println("Current goal too far, attempting navigation back to patrol: ", g.patrolPoints[g.currentPoint])
+		}
+		actions = make([]action, 0)
+	} else {
+		g.cantFind = 0
+	}
+	if !lost {
+		g.lastTimeNotLost = time.Now()
 	}
 	return actions
 }
@@ -60,6 +90,23 @@ func canSee(g *guard, p *player, m model) bool {
 	}
 
 	return true
+}
+
+func closestPatrolPoint(g *guard) int {
+	closest := 0
+	currentState := state{
+		x: g.X,
+		y: g.Y,
+	}
+	minDistance := math.Abs(float64(currentState.distanceTo(g.patrolPoints[closest])))
+	for i, point := range g.patrolPoints {
+		distance := math.Abs(float64(currentState.distanceTo(point)))
+		if distance < minDistance {
+			minDistance = distance
+			closest = i
+		}
+	}
+	return closest
 }
 
 func aStar(state0 state, goal_state state, m model) ([]action, error) {
