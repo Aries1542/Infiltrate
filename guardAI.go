@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"errors"
 	"log"
 	"math"
 	"time"
@@ -29,7 +30,11 @@ func think(g *guard, m model) []action {
 		x: g.X,
 		y: g.Y,
 	}
-	actions := aStar(currentState, g.goal, m)
+	actions, err := aStar(currentState, g.goal, m)
+	if err != nil {
+		log.Println("Error in A* search:", err)
+		return make([]action, 0)
+	}
 	return actions
 }
 
@@ -57,7 +62,7 @@ func canSee(g *guard, p *player, m model) bool {
 	return true
 }
 
-func aStar(state0 state, goal_state state, m model) []action {
+func aStar(state0 state, goal_state state, m model) ([]action, error) {
 	var startTime = time.Now()
 	var goal_node *node = nil
 	stored_states := make(map[state]bool)
@@ -79,12 +84,10 @@ func aStar(state0 state, goal_state state, m model) []action {
 		}
 		stored_states[current.state] = true
 		if current.depth > 150 {
-			log.Println("Depth limit reached")
-			return nil
+			return nil, errors.New("depth limit reached")
 		}
 		if time.Since(startTime).Seconds() > 2 {
-			log.Println("Time limit reached")
-			return nil
+			return nil, errors.New("time limit reached")
 		}
 
 		if math.Abs(float64(current.state.distanceTo(goal_state))) < float64(skipFactor*guardSpeed) {
@@ -107,8 +110,7 @@ func aStar(state0 state, goal_state state, m model) []action {
 		}
 	}
 	if goal_node == nil {
-		log.Println("No path found")
-		return nil
+		return nil, errors.New("no path found")
 	}
-	return goal_node.create_action_sequence()
+	return goal_node.create_action_sequence(), nil
 }
