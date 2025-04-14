@@ -237,6 +237,9 @@ func (h *Hub) handleDetection(guardId string, client *Client) {
 		log.Println("detection requested with invalid id: ", guardId)
 		return
 	}
+	if h.guards[detected].chasing != nil {
+		return
+	}
 	h.Lock()
 	h.guards[detected].Searching = false
 	h.guards[detected].chasing = h.players[client]

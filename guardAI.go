@@ -23,6 +23,7 @@ func think(g *guard, m model) []action {
 			y: g.chasing.Y,
 		}
 	} else { // Guard is in pursuit but has lost sight
+		log.Println("can't see player")
 		g.Searching = true
 		if goalReached(g) {
 			g.chasing = nil
@@ -79,9 +80,10 @@ func canSee(g *guard, p *player, m model) bool {
 		x1, y1, x2, y2 = x2, y2, x1, y1
 	}
 	slope := (y2 - y1) / (x2 - x1)
+	b := y1 - slope*x1
 
-	for x := x1; x <= x2; x += 20 {
-		y := (slope * x) + y1
+	for x := x1 + 20; x < x2; x += 20 {
+		y := (slope * x) + b
 		for _, obs := range m.obstacles {
 			if obs.X < x && obs.X+obs.Width > x && obs.Y < y && obs.Y+obs.Height > y {
 				return false
