@@ -15,12 +15,13 @@ import (
 //	It also continually sends server data to clients
 type Hub struct {
 	sync.RWMutex
-	incoming  chan request
-	nextID    int
-	players   map[*Client]*player
-	guards    []guard
-	obstacles []obstacle
-	items     []item
+	incoming        chan request
+	nextID          int
+	players         map[*Client]*player
+	guards          []guard
+	obstacles       []obstacle
+	restrictedAreas []obstacle
+	items           []item
 }
 
 // a player is representation of the data needed to draw one client to another's screen
@@ -70,17 +71,18 @@ type item struct {
 }
 
 func newHub() *Hub {
-	obstacles, items, guards, err := readWorldData()
+	obstacles, items, guards, restrictedAreas, err := readWorldData()
 	if err != nil {
 		log.Println(err)
 	}
 	return &Hub{
-		incoming:  make(chan request),
-		nextID:    1,
-		players:   make(map[*Client]*player),
-		guards:    guards,
-		obstacles: obstacles,
-		items:     items,
+		incoming:        make(chan request),
+		nextID:          1,
+		players:         make(map[*Client]*player),
+		guards:          guards,
+		obstacles:       obstacles,
+		restrictedAreas: restrictedAreas,
+		items:           items,
 	}
 }
 
@@ -93,7 +95,8 @@ func (h *Hub) handleMessages() {
 
 func (h *Hub) update() {
 	m := model{
-		obstacles: h.obstacles,
+		restrictedAreas: h.restrictedAreas,
+		obstacles:       h.obstacles,
 	}
 
 	updateTicker := time.NewTicker(10 * time.Millisecond)
@@ -167,7 +170,8 @@ func (h *Hub) update() {
 func (h *Hub) handleGuardAI() {
 	thinkTicker := time.NewTicker(200 * time.Millisecond)
 	model := model{
-		obstacles: h.obstacles,
+		restrictedAreas: h.restrictedAreas,
+		obstacles:       h.obstacles,
 	}
 	for range thinkTicker.C {
 		for i := range h.guards {
@@ -181,7 +185,7 @@ func (h *Hub) handleGuardAI() {
 	}
 }
 
-func readWorldData() ([]obstacle, []item, []guard, error) {
+func readWorldData() ([]obstacle, []item, []guard, []obstacle, error) {
 	content, err := os.ReadFile("./mapData.json")
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
@@ -207,7 +211,7 @@ func readWorldData() ([]obstacle, []item, []guard, error) {
 		items := make([]item, 0)
 		guards := make([]guard, 0)
 		log.Println(err)
-		return obstacles, items, guards, errors.New("could not read file data, continuing with empty world")
+		return obstacles, items, guards, make([]obstacle, 0), errors.New("could not read file data, continuing with empty world")
 	}
 
 	guards := make([]guard, len(mapData.Guards))
@@ -231,7 +235,19 @@ func readWorldData() ([]obstacle, []item, []guard, error) {
 			})
 		}
 	}
-	return mapData.Obstacles, mapData.Items, guards, nil
+
+	restrictedAreas := []obstacle{
+		{
+			X:      -11 * 20,
+			Y:      -5 * 20,
+			Width:  22 * 20,
+			Height: 13 * 20,
+			Color:  "",
+			Stroke: "",
+		},
+	}
+
+	return mapData.Obstacles, mapData.Items, guards, restrictedAreas, nil
 }
 
 func (h *Hub) handleDetection(guardId string, client *Client) {
@@ -251,7 +267,7 @@ func (h *Hub) handleDetection(guardId string, client *Client) {
 	if h.guards[detected].chasing != nil {
 		return
 	}
-	if !canSee(&h.guards[detected], h.players[client], model{h.obstacles}) {
+	if !canSee(&h.guards[detected], h.players[client], model{h.restrictedAreas, h.obstacles}) {
 		return
 	}
 	h.Lock()

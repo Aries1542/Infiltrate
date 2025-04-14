@@ -4,7 +4,8 @@ const skipFactor = 12
 const guardSpeed = 2
 
 type model struct {
-	obstacles []obstacle
+	restrictedAreas []obstacle
+	obstacles       []obstacle
 }
 
 func (m *model) actions(s state) []action {
@@ -38,6 +39,17 @@ func (m *model) actions(s state) []action {
 
 func (m *model) isValid(s state) bool {
 	guardRadius := float32(25)
+
+	for _, area := range m.restrictedAreas {
+		closestX := max(area.X, min(s.x, area.X+area.Width))
+		closestY := max(area.Y, min(s.y, area.Y+area.Height))
+		distanceX := s.x - closestX
+		distanceY := s.y - closestY
+		if (distanceX*distanceX + distanceY*distanceY) < (guardRadius * guardRadius) {
+			return false
+		}
+	}
+
 	for _, obs := range m.obstacles {
 		closestX := max(obs.X, min(s.x, obs.X+obs.Width))
 		closestY := max(obs.Y, min(s.y, obs.Y+obs.Height))
