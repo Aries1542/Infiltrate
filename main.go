@@ -5,13 +5,22 @@ import (
 	"net/http"
 )
 
+func noCache(fs http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+
+		fs.ServeHTTP(w, r)
+	}
+}
+
 func main() {
 
 	hub := newHub()
-	go hub.run()
-	go hub.updateClients()
+	go hub.handleMessages()
+	go hub.update()
+	go hub.handleGuardAI()
 
-	http.Handle("/", http.FileServer(http.Dir("static"))) // serve the static directory to the client
+	http.Handle("/", noCache(http.FileServer(http.Dir("static")))) // serve the static directory to the client
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		connectClient(hub, w, r)
 	})

@@ -27,7 +27,7 @@ const main = () => {
     game.items = two.makeGroup();
     loadData();
     drawPlayer(centerX, centerY, 0, "spawnReference");
-    console.log("Options:\n\tC: make coin mode\n\tV: make obstacle mode\n\tB: make crate mode\n\tR: delete mode\n\tZ: abort action\n\n\tP: save data\n\tL: load data\n\n\tWASD: move camera\n\tShift: move faster\n\tSpace: reset camera");
+    console.log("Options:\n\tC: make coin mode\n\tV: make obstacle mode\n\tB: make crate mode\n\tR: delete mode\n\tF: find coordinates\n\tZ: abort action\n\n\tP: save data\n\tL: load data\n\n\tWASD: move camera\n\tShift: move faster\n\tSpace: reset camera");
     console.log("Current mode: make obstacle");
     setInterval(update, 15);
 };
@@ -117,6 +117,10 @@ onkeydown = (event) => {
         case "KeyL":
             loadData();
             break;
+        case "KeyF":
+            mode = "findCoords";
+            console.log("Switched to findCoords mode");
+            break;
     }
 };
 onkeyup = (event) => {
@@ -138,6 +142,7 @@ onmousedown = (event) => {
         case "delete":
         case "makeCoin":
         case "makeCrate":
+        case "findCoords":
             break;
         default:
             console.error("Unknown mode: " + mode);
@@ -160,6 +165,8 @@ onmousemove = (event) => {
         case "makeCrate":
             makeCratePreview(event)
             break;
+        case "findCoords":
+            break;
         default:
             console.error("Unknown mode: " + mode);
     }
@@ -181,10 +188,19 @@ onmouseup = (event) => {
         case "makeCrate":
             makeCrateComplete(event)
             break;
+        case "findCoords":
+            printCoords(event);
+            break;
         default:
             console.error("Unknown mode: " + mode);
     }
 };
+
+const printCoords = (event) => {
+    let gridX = Math.floor(event.x - centerX);
+    let gridY = Math.floor(event.y - centerY);
+    console.log("X: " + gridX + ", Y: " + gridY);
+}
 
 
 const makeCoinPreview = (event) => {
@@ -244,7 +260,6 @@ const makeObstacleComplete = (event) => {
     if (startX === null || startY === null) {
         return;
     }
-    console.log(preview)
     if (preview)
         if (preview.width >= game.gridSize && preview.height >= game.gridSize) {
             game.obstacles.add(preview);
@@ -351,7 +366,7 @@ const saveData = () => {
         });
     }
     localToGlobalCoords(items)
-    console.log("Sent to server: ", JSON.stringify({ obstacles, items }));
+    console.log("Saving your changes");
 
     fetch("/save", {
         method: "POST",
@@ -371,9 +386,11 @@ const loadData = () => {
             game.items.remove(game.items.children);
             const { obstacles, items } = data;
             game.nextId = items[items.length-1] ? Number((items[items.length-1].id).substring(4)) + 1 : 1;
+            game.offset = { x: 0, y: 0 };
             two.scene.position.set(0, 0);
             drawMap(obstacles, items);
         });
+        console.log("Loading data from server");
 };
 
 const localToGlobalCoords = (data) => {

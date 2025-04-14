@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -15,11 +15,13 @@ import (
 //	It also continually sends server data to clients
 type Hub struct {
 	sync.RWMutex
-	incoming  chan request
-	nextID    int
-	players   map[*Client]player
-	obstacles []obstacle
-	items     []item
+	incoming        chan request
+	nextID          int
+	players         map[*Client]*player
+	guards          []guard
+	obstacles       []obstacle
+	restrictedAreas []obstacle
+	items           []item
 }
 
 // a player is representation of the data needed to draw one client to another's screen
@@ -30,6 +32,21 @@ type player struct {
 	Y        float32 `json:"y"`
 	Rotation float32 `json:"rotation"`
 	Score    int     `json:"score"`
+}
+
+type guard struct {
+	Id                     string  `json:"id"`
+	X                      float32 `json:"x"`
+	Y                      float32 `json:"y"`
+	Rotation               float32 `json:"rotation"`
+	Searching              bool    `json:"searching"`
+	actions                []action
+	goal                   state
+	patrolPoints           []state
+	currentPoint           int
+	chasing                *player
+	failedPathAttempts     int // # of patrol points guard cannot navigate to
+	lastSuccessfulPathTime time.Time
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -53,97 +70,37 @@ type item struct {
 	Y    float32 `json:"y"`
 }
 
-type request interface {
-	Handle(h *Hub)
-}
-type joinRequest struct {
-	client   *Client
-	username string
-}
-
-func (joining joinRequest) Handle(h *Hub) {
-	h.Lock()
-	client := joining.client
-	h.players[client] = player{
-		Id:       "player" + strconv.Itoa(h.nextID),
-		Username: joining.username,
-		X:        0,
-		Y:        0,
-		Rotation: 0,
-		Score:    0,
-	}
-	h.nextID++
-	h.Unlock()
-
-	client.outgoing <- setSceneResponse{
-		Player:    h.players[client],
-		Obstacles: h.obstacles,
-		Items:     h.items,
-	}
-}
-
-type leaveRequest struct {
-	client *Client
-}
-
-func (leaving leaveRequest) Handle(h *Hub) {
-	leavingClientId := h.players[leaving.client].Id
-	h.Lock()
-	delete(h.players, leaving.client)
-	h.Unlock()
-	close(leaving.client.outgoing)
-	for client := range h.players {
-		client.outgoing <- removeResponse{
-			Type: "player",
-			Id:   leavingClientId,
-		}
-	}
-}
-
-type updateRequest struct {
-	client      *Client
-	X           float32
-	Y           float32
-	Rotation    float32
-	Interaction string
-}
-
-func (updating updateRequest) Handle(h *Hub) {
-	h.Lock()
-	updatingPlayer := h.players[updating.client]
-	updatingPlayer.X = updating.X
-	updatingPlayer.Y = updating.Y
-	updatingPlayer.Rotation = updating.Rotation
-	h.players[updating.client] = updatingPlayer
-	h.Unlock()
-	if updating.Interaction != "" {
-		h.handleInteraction(updating.Interaction, updating.client)
-	}
-}
-
 func newHub() *Hub {
-	obstacles, items, err := readObstacles()
+	obstacles, items, guards, restrictedAreas, err := readWorldData()
 	if err != nil {
 		log.Println(err)
 	}
 	return &Hub{
-		incoming:  make(chan request),
-		nextID:    1,
-		players:   make(map[*Client]player),
-		obstacles: obstacles,
-		items:     items,
+		incoming:        make(chan request),
+		nextID:          1,
+		players:         make(map[*Client]*player),
+		guards:          guards,
+		obstacles:       obstacles,
+		restrictedAreas: restrictedAreas,
+		items:           items,
 	}
 }
 
-func (h *Hub) run() {
+func (h *Hub) handleMessages() {
 	for {
 		message := <-h.incoming
 		message.Handle(h)
 	}
 }
 
-func (h *Hub) updateClients() {
+func (h *Hub) update() {
+	m := model{
+		restrictedAreas: h.restrictedAreas,
+		obstacles:       h.obstacles,
+	}
+
 	updateTicker := time.NewTicker(10 * time.Millisecond)
+	moveTicker := time.NewTicker(20 * time.Millisecond)
 	coinSpawnTicker := time.NewTicker(2 * time.Minute)
 	for {
 		select {
@@ -151,12 +108,41 @@ func (h *Hub) updateClients() {
 			players := make([]player, 0)
 			h.RLock()
 			for client := range h.players {
-				players = append(players, h.players[client])
+				players = append(players, *h.players[client])
 			}
 			for receivingClient := range h.players {
-				receivingClient.outgoing <- updateResponse{PlayersData: players}
+				receivingClient.outgoing <- updateResponse{Players: players, Guards: h.guards}
 			}
 			h.RUnlock()
+		case <-moveTicker.C:
+			h.Lock()
+			for i := range h.guards {
+				if len(h.guards[i].actions) == 0 {
+					continue
+				}
+				last := len(h.guards[i].actions) - 1
+
+				newX := h.guards[i].X + h.guards[i].actions[last].deltaX
+				newY := h.guards[i].Y + h.guards[i].actions[last].deltaY
+				if m.isValid(state{x: newX, y: newY}) {
+					h.guards[i].X = newX
+					h.guards[i].Y = newY
+					h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
+				}
+				if h.guards[i].chasing != nil {
+					gX := h.guards[i].X
+					gY := h.guards[i].Y
+					pX := h.guards[i].chasing.X
+					pY := h.guards[i].chasing.Y
+					if (state{x: gX, y: gY}).distanceTo(state{x: pX, y: pY}) < 50 {
+						h.killPlayer(&h.guards[i], h.guards[i].chasing)
+					}
+				}
+				if len(h.guards[i].actions) > 0 {
+					h.guards[i].actions = h.guards[i].actions[:last]
+				}
+			}
+			h.Unlock()
 		case <-coinSpawnTicker.C:
 			h.Lock()
 			content, err := os.ReadFile("./mapData.json")
@@ -181,7 +167,25 @@ func (h *Hub) updateClients() {
 	}
 }
 
-func readObstacles() ([]obstacle, []item, error) {
+func (h *Hub) handleGuardAI() {
+	thinkTicker := time.NewTicker(200 * time.Millisecond)
+	model := model{
+		restrictedAreas: h.restrictedAreas,
+		obstacles:       h.obstacles,
+	}
+	for range thinkTicker.C {
+		for i := range h.guards {
+			if !h.guards[i].Searching || len(h.guards[i].actions) == 0 {
+				actions := think(&h.guards[i], model)
+				h.Lock()
+				h.guards[i].actions = actions
+				h.Unlock()
+			}
+		}
+	}
+}
+
+func readWorldData() ([]obstacle, []item, []guard, []obstacle, error) {
 	content, err := os.ReadFile("./mapData.json")
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
@@ -189,16 +193,93 @@ func readObstacles() ([]obstacle, []item, error) {
 	mapData := struct {
 		Obstacles []obstacle
 		Items     []item
+		Guards    []struct {
+			Id           string  `json:"id"`
+			X            float32 `json:"x"`
+			Y            float32 `json:"y"`
+			Rotation     float32 `json:"rotation"`
+			PatrolPoints []struct {
+				X float32 `json:"x"`
+				Y float32 `json:"y"`
+			}
+		}
 	}{}
 
 	err = json.Unmarshal(content, &mapData)
 	if err != nil {
 		obstacles := make([]obstacle, 0)
 		items := make([]item, 0)
+		guards := make([]guard, 0)
 		log.Println(err)
-		return obstacles, items, errors.New("could not read file data, continuing with empty obstacles")
+		return obstacles, items, guards, make([]obstacle, 0), errors.New("could not read file data, continuing with empty world")
 	}
-	return mapData.Obstacles, mapData.Items, nil
+
+	guards := make([]guard, len(mapData.Guards))
+	for i := range mapData.Guards {
+		guards[i] = guard{
+			Id:           mapData.Guards[i].Id,
+			X:            mapData.Guards[i].X,
+			Y:            mapData.Guards[i].Y,
+			Rotation:     mapData.Guards[i].Rotation,
+			Searching:    true,
+			actions:      make([]action, 0),
+			goal:         state{x: mapData.Guards[i].X, y: mapData.Guards[i].Y},
+			patrolPoints: make([]state, 0),
+			currentPoint: 0,
+			chasing:      nil,
+		}
+		for j := range mapData.Guards[i].PatrolPoints {
+			guards[i].patrolPoints = append(guards[i].patrolPoints, state{
+				x: mapData.Guards[i].PatrolPoints[j].X,
+				y: mapData.Guards[i].PatrolPoints[j].Y,
+			})
+		}
+	}
+
+	restrictedAreas := []obstacle{
+		{
+			X:      -11 * 20,
+			Y:      -5 * 20,
+			Width:  22 * 20,
+			Height: 13 * 20,
+			Color:  "",
+			Stroke: "",
+		},
+	}
+
+	return mapData.Obstacles, mapData.Items, guards, restrictedAreas, nil
+}
+
+func (h *Hub) handleDetection(guardId string, client *Client) {
+	detected := -1
+	h.RLock()
+	for guardIndex := range h.guards {
+		if h.guards[guardIndex].Id == guardId {
+			detected = guardIndex
+			break
+		}
+	}
+	h.RUnlock()
+	if detected == -1 {
+		log.Println("detection requested with invalid id: ", guardId)
+		return
+	}
+	if h.guards[detected].chasing != nil {
+		return
+	}
+	if !canSee(&h.guards[detected], h.players[client], model{h.restrictedAreas, h.obstacles}) {
+		return
+	}
+	h.Lock()
+	h.guards[detected].Searching = false
+	h.guards[detected].chasing = h.players[client]
+	h.guards[detected].goal = state{
+		x: h.players[client].X,
+		y: h.players[client].Y,
+	}
+	h.guards[detected].actions = make([]action, 0)
+	h.Unlock()
+
 }
 
 func (h *Hub) handleInteraction(interactionId string, client *Client) {
@@ -233,6 +314,24 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 			}
 		}
 	}
+}
+
+func (h *Hub) killPlayer(g *guard, p *player) {
+	p.X = 0
+	p.Y = 0
+	p.Score = 0
+	for client, player := range h.players {
+		if player == p {
+			client.outgoing <- setSceneResponse{
+				Player: *p,
+			}
+		}
+	}
+
+	g.chasing = nil
+	g.Searching = true
+	g.currentPoint = 0
+	g.goal = g.patrolPoints[0]
 }
 
 func (h *Hub) usernameExists(username string) bool {
