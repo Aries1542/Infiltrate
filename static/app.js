@@ -30,8 +30,8 @@ const handleMessage = (event) => {
             const {player, obstacles, items} = JSON.parse(event.data);
             if (player.id) {
                 game.clientId = player.id;
+                game.grid.position.add(game.clientGlobalPos.x - player.x, game.clientGlobalPos.y -player.y);
                 Object.assign(game.clientGlobalPos, {x: player.x, y: player.y});
-                game.grid.position.set(player.x, player.y);
                 game.obstacles.position.set(player.x, player.y);
                 game.items.position.set(player.x, player.y);
                 game.players.position.set(player.x, player.y);
