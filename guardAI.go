@@ -3,6 +3,7 @@ package main
 import (
 	"container/heap"
 	"errors"
+	"log"
 	"math"
 	"math/rand/v2"
 	"time"
@@ -34,12 +35,14 @@ func think(g *guard, m model) []action {
 	actions, err := aStar(currentState, g.goal, m)
 	lost := false
 	if err != nil {
+		log.Println("Guard AI error:", err)
 		g.cantFind++
 		if time.Since(g.lastTimeNotLost) > 1*time.Minute {
 			g.currentPoint = 0
 			g.goal = g.patrolPoints[0]
 			g.X = g.patrolPoints[0].x
 			g.Y = g.patrolPoints[0].y
+			log.Println("Too lost, tping...")
 		} else if g.cantFind > len(g.patrolPoints) {
 			lost = true
 			g.currentPoint = closestPatrolPoint(g)
@@ -49,10 +52,12 @@ func think(g *guard, m model) []action {
 				x: (g.X + rand.Float32()*xDist) + (rand.Float32()*xDist/4 - xDist/8),
 				y: (g.Y + rand.Float32()*yDist) + (rand.Float32()*yDist/4 - yDist/8),
 			}
+			log.Println("Trying random point: ", g.goal)
 		} else {
 			g.chasing = nil
 			g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
 			g.goal = g.patrolPoints[g.currentPoint]
+			log.Println("Trying patrol point: ", g.goal)
 		}
 		actions = make([]action, 0)
 	} else {
