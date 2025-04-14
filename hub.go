@@ -35,18 +35,18 @@ type player struct {
 }
 
 type guard struct {
-	Id              string  `json:"id"`
-	X               float32 `json:"x"`
-	Y               float32 `json:"y"`
-	Rotation        float32 `json:"rotation"`
-	Searching       bool    `json:"searching"`
-	actions         []action
-	goal            state
-	patrolPoints    []state
-	currentPoint    int
-	chasing         *player
-	cantFind        int       // # of patrol points guard cannot navigate to, better attribute name to come
-	lastTimeNotLost time.Time // last time a guard was succesfully able to find a path, better attribute name to come here too
+	Id                     string  `json:"id"`
+	X                      float32 `json:"x"`
+	Y                      float32 `json:"y"`
+	Rotation               float32 `json:"rotation"`
+	Searching              bool    `json:"searching"`
+	actions                []action
+	goal                   state
+	patrolPoints           []state
+	currentPoint           int
+	chasing                *player
+	failedPathAttempts     int // # of patrol points guard cannot navigate to
+	lastSuccessfulPathTime time.Time
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
