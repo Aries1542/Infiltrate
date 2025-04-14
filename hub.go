@@ -126,7 +126,18 @@ func (h *Hub) update() {
 					h.guards[i].Y = newY
 					h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
 				}
-				h.guards[i].actions = h.guards[i].actions[:last]
+				if h.guards[i].chasing != nil {
+					gX := h.guards[i].X
+					gY := h.guards[i].Y
+					pX := h.guards[i].chasing.X
+					pY := h.guards[i].chasing.Y
+					if (state{x: gX, y: gY}).distanceTo(state{x: pX, y: pY}) < 50 {
+						h.killPlayer(&h.guards[i], h.guards[i].chasing)
+					}
+				}
+				if len(h.guards[i].actions) > 0 {
+					h.guards[i].actions = h.guards[i].actions[:last]
+				}
 			}
 			h.Unlock()
 		case <-coinSpawnTicker.C:
@@ -287,6 +298,24 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 			}
 		}
 	}
+}
+
+func (h *Hub) killPlayer(g *guard, p *player) {
+	p.X = 0
+	p.Y = 0
+	p.Score = 0
+	for client, player := range h.players {
+		if player == p {
+			client.outgoing <- setSceneResponse{
+				Player: *p,
+			}
+		}
+	}
+
+	g.chasing = nil
+	g.Searching = true
+	g.currentPoint = 0
+	g.goal = g.patrolPoints[0]
 }
 
 func (h *Hub) usernameExists(username string) bool {

@@ -31,6 +31,11 @@ const handleMessage = (event) => {
             if (player.id) {
                 game.clientId = player.id;
                 Object.assign(game.clientGlobalPos, {x: player.x, y: player.y});
+                game.grid.position.set(player.x, player.y);
+                game.obstacles.position.set(player.x, player.y);
+                game.items.position.set(player.x, player.y);
+                game.players.position.set(player.x, player.y);
+                game.guards.position.set(player.x, player.y);
             }
             drawMap(obstacles, items);
             break;
