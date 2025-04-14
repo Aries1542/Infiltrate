@@ -244,7 +244,6 @@ const makeObstacleComplete = (event) => {
     if (startX === null || startY === null) {
         return;
     }
-    console.log(preview)
     if (preview)
         if (preview.width >= game.gridSize && preview.height >= game.gridSize) {
             game.obstacles.add(preview);
@@ -351,7 +350,7 @@ const saveData = () => {
         });
     }
     localToGlobalCoords(items)
-    console.log("Sent to server: ", JSON.stringify({ obstacles, items }));
+    console.log("Saving your changes");
 
     fetch("/save", {
         method: "POST",
@@ -371,9 +370,11 @@ const loadData = () => {
             game.items.remove(game.items.children);
             const { obstacles, items } = data;
             game.nextId = items[items.length-1] ? Number((items[items.length-1].id).substring(4)) + 1 : 1;
+            game.offset = { x: 0, y: 0 };
             two.scene.position.set(0, 0);
             drawMap(obstacles, items);
         });
+        console.log("Loading data from server");
 };
 
 const localToGlobalCoords = (data) => {

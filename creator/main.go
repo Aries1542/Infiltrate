@@ -33,7 +33,7 @@ func saveData(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(body)
 
-	if strings.ContainsAny(body.Filename, "!@#$%^&*(){}[]|\\;:\"'<>,.?/`~+=") {
+	if strings.ContainsAny(body.Filename, "!@#$%^&*(){}[]|\\;:\"'<>,.?/`~+= ") {
 		http.Error(w, "Invalid filename, please do not use special characters (the file extension will be added automatically)", http.StatusBadRequest)
 		return
 	}
@@ -75,9 +75,17 @@ func loadData(w http.ResponseWriter, r *http.Request) {
 	w.Write(dataBytes)
 }
 
+func noCache(fs http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+
+		fs.ServeHTTP(w, r)
+	}
+}
+
 func main() {
 
-	http.Handle("/", http.FileServer(http.Dir("static"))) // serve the static directory to the client
+	http.Handle("/", noCache(http.FileServer(http.Dir("static")))) // serve the static directory to the client
 	http.HandleFunc("/save", saveData)
 	http.HandleFunc("/load", loadData)
 
