@@ -3,7 +3,6 @@ package main
 import (
 	"container/heap"
 	"errors"
-	"log"
 	"math"
 	"math/rand/v2"
 	"time"
@@ -23,7 +22,6 @@ func think(g *guard, m model) []action {
 			y: g.chasing.Y,
 		}
 	} else { // Guard is in pursuit but has lost sight
-		log.Println("can't see player")
 		g.Searching = true
 		if goalReached(g) {
 			g.chasing = nil
@@ -42,7 +40,6 @@ func think(g *guard, m model) []action {
 			g.goal = g.patrolPoints[0]
 			g.X = g.patrolPoints[0].x
 			g.Y = g.patrolPoints[0].y
-			log.Println("Guard fully lost, returning to origin")
 		} else if g.cantFind > len(g.patrolPoints) {
 			lost = true
 			g.currentPoint = closestPatrolPoint(g)
@@ -52,12 +49,10 @@ func think(g *guard, m model) []action {
 				x: (g.X + rand.Float32()*xDist) + (rand.Float32()*xDist/4 - xDist/8),
 				y: (g.Y + rand.Float32()*yDist) + (rand.Float32()*yDist/4 - yDist/8),
 			}
-			log.Println("All patrol points out of reach, attempting random nav back: ", g.goal)
 		} else {
 			g.chasing = nil
 			g.currentPoint = (g.currentPoint + 1) % len(g.patrolPoints)
 			g.goal = g.patrolPoints[g.currentPoint]
-			log.Println("Current goal too far, attempting navigation back to patrol: ", g.patrolPoints[g.currentPoint])
 		}
 		actions = make([]action, 0)
 	} else {
@@ -79,10 +74,16 @@ func canSee(g *guard, p *player, m model) bool {
 	if x1 > x2 {
 		x1, y1, x2, y2 = x2, y2, x1, y1
 	}
+	if x2-x1 < 50 {
+		mid := (x1 + x2) / 2
+		x2 = mid + 25
+		x1 = mid - 25
+	}
+
 	slope := (y2 - y1) / (x2 - x1)
 	b := y1 - slope*x1
 
-	for x := x1 + 20; x < x2; x += 20 {
+	for x := x1; x <= x2; x += 5 {
 		y := (slope * x) + b
 		for _, obs := range m.obstacles {
 			if obs.X < x && obs.X+obs.Width > x && obs.Y < y && obs.Y+obs.Height > y {

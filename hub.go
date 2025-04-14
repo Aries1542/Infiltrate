@@ -240,6 +240,9 @@ func (h *Hub) handleDetection(guardId string, client *Client) {
 	if h.guards[detected].chasing != nil {
 		return
 	}
+	if !canSee(&h.guards[detected], h.players[client], model{h.obstacles}) {
+		return
+	}
 	h.Lock()
 	h.guards[detected].Searching = false
 	h.guards[detected].chasing = h.players[client]
