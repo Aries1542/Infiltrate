@@ -79,7 +79,7 @@ func canSee(g *guard, p *player, m model) bool {
 	if x1 > x2 {
 		x1, y1, x2, y2 = x2, y2, x1, y1
 	}
-	if x2-x1 < 50 {
+	if x2-x1 <= 75 {
 		mid := (x1 + x2) / 2
 		x2 = mid + 25
 		x1 = mid - 25
