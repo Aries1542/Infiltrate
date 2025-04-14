@@ -35,14 +35,14 @@ func think(g *guard, m model) []action {
 	actions, err := aStar(currentState, g.goal, m)
 	lost := false
 	if err != nil {
-		log.Println("Guard AI error:", err)
+		log.Println(g.Id, "AI error:", err)
 		g.failedPathAttempts++
 		if time.Since(g.lastSuccessfulPathTime) > 1*time.Minute || time.Since(g.lastSuccessfulMoveTime) > 1*time.Minute {
 			g.currentPoint = 0
 			g.goal = g.patrolPoints[0]
 			g.X = g.patrolPoints[0].x
 			g.Y = g.patrolPoints[0].y
-			log.Println("got stuck, tping...")
+			log.Println("got stuck, tping to spawn:", g.goal)
 		} else if g.failedPathAttempts > len(g.patrolPoints) {
 			lost = true
 			g.currentPoint = closestPatrolPoint(g)
