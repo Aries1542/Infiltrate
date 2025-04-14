@@ -47,6 +47,7 @@ type guard struct {
 	chasing                *player
 	failedPathAttempts     int // # of patrol points guard cannot navigate to
 	lastSuccessfulPathTime time.Time
+	lastSuccessfulMoveTime time.Time
 }
 
 // An obstacle should be id-less, static, collidable, and rectangular.
@@ -128,6 +129,7 @@ func (h *Hub) update() {
 					h.guards[i].X = newX
 					h.guards[i].Y = newY
 					h.guards[i].Rotation = float32(math.Atan2(float64(h.guards[i].actions[last].deltaY), float64(h.guards[i].actions[last].deltaX)) + 0.5*math.Pi)
+					h.guards[i].lastSuccessfulMoveTime = time.Now()
 				}
 				if h.guards[i].chasing != nil {
 					gX := h.guards[i].X
