@@ -262,7 +262,7 @@ const detectedBy = (guard) => {
     } else {
         console.log("not cardinal " + guard.rotation);
     }
-    const coneLength = 180
+    const coneLength = 250
     const guardX = game.guards.position.x + guard.position.x
     const guardY = game.guards.position.y + guard.position.y
 
