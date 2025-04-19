@@ -1,7 +1,7 @@
 const params = {
     fullscreen: true
 };
-const two = new Two(params); // Base class used for all drawing
+const two = new Two(params);
 two.renderer.domElement.style.background = '#ddd'
 
 let clientX = .5 * two.width;
@@ -128,12 +128,6 @@ const main = () => {
     game.ui = drawUI()
     document.getElementById("play-button").onclick = onClickPlay;
 };
-
-window.addEventListener("resize", function(){
-    clientX = .5 * two.width;
-    clientY = .5 * two.height;
-    Object.assign(game.client.position, {x: clientX, y: clientY});
-});
 
 const keysDown = {
     "KeyW": false,
