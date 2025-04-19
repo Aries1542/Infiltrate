@@ -300,7 +300,14 @@ func (h *Hub) handleInteraction(interactionId string, client *Client) {
 	}
 	switch h.items[interacted].Type {
 	case "coin":
+		playerRadius := float32(50)
+		coinRadius := float32(10)
+		if (state{x: h.items[interacted].X, y: h.items[interacted].Y}).distanceTo(state{x: h.players[client].X, y: h.players[client].Y}) > (playerRadius + coinRadius) {
+			log.Println("interaction requested with invalid distance: ", interactionId)
+			return
+		}
 		h.Lock()
+
 		h.items[interacted] = h.items[len(h.items)-1]
 		h.items = h.items[:len(h.items)-1]
 
