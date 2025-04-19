@@ -176,6 +176,9 @@ const getKeyInput = () => {
 const update = () => {
     let delta = getKeyInput();
     delta.x *= game.moveSpeed; delta.y *= game.moveSpeed;
+    if (delta.x || delta.y) {
+        game.client.rotation = Math.atan2(delta.y, delta.x) + .5*Math.PI;
+    }
     collideDelta(delta);
     game.grid.position.subtract(delta);
     game.obstacles.position.subtract(delta);
@@ -184,7 +187,6 @@ const update = () => {
     game.guards.position.subtract(delta);
     game.clientGlobalPos.x += delta.x;
     game.clientGlobalPos.y += delta.y;
-    game.client.rotation = Math.atan2(game.mouse.y - clientY, game.mouse.x - clientX) + .5*Math.PI;
 
     const itemId = updateItems();
     const guardId = detected();
