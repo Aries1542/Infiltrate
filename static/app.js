@@ -137,9 +137,13 @@ window.addEventListener("resize", function(){
 
 const keysDown = {
     "KeyW": false,
+    "ArrowUp": false,
     "KeyA": false,
+    "ArrowLeft": false,
     "KeyS": false,
+    "ArrowDown": false,
     "KeyD": false,
+    "ArrowRight": false,
 };
 onkeydown = onkeyup = (event) => {
     keysDown[event.code] = (event.type === "keydown");
@@ -150,16 +154,16 @@ onmousemove = (event) => {
 
 const getKeyInput = () => {
     const delta = {x: 0, y: 0};
-    if (keysDown["KeyW"]) {
+    if (keysDown["KeyW"] || keysDown["ArrowUp"]) {
         delta.y -= 1;
     }
-    if (keysDown["KeyA"]) {
+    if (keysDown["KeyA"] || keysDown["ArrowLeft"]) {
         delta.x -= 1;
     }
-    if (keysDown["KeyS"]) {
+    if (keysDown["KeyS"] || keysDown["ArrowDown"]) {
         delta.y += 1;
     }
-    if (keysDown["KeyD"]) {
+    if (keysDown["KeyD"] || keysDown["ArrowRight"]) {
         delta.x += 1;
     }
     if (delta.x && delta.y) {
