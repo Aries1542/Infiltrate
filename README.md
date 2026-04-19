@@ -1,5 +1,4 @@
 # Infiltrate
-**Hosted at: infiltrate.aries1542.dev**
 
 ### Description
 
